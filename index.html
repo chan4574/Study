@@ -4,115 +4,398 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Offline Study App</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0d12">
 <style>
   :root {
-    --slate: #0b0d12;
-    --charcoal: #131720;
+    --bg-color: #0b0d12;
+    --card-color: #131720;
+    --text-main: #f2f4f8;
+    --text-muted: #9aa4b5;
     --accent: #8b7cff;
-    --text: #f2f4f8;
-    --muted: #9aa4b5;
-    --line: #242936;
+    --accent-hover: #6f61ed;
+    --thick-outline: #242936;
+    --danger: #ff6577;
+    --green: #4fd18b;
   }
+  
+  * { box-sizing: border-box; font-family: sans-serif; }
+  
   body {
-    margin: 0; background: var(--slate); color: var(--text);
-    font-family: sans-serif; padding-bottom: 70px;
+    margin: 0; padding: 0 0 80px 0;
+    background-color: var(--bg-color); color: var(--text-main);
   }
-  .header { 
-    padding: 16px; border-bottom: 1px solid var(--line); 
-    font-weight: bold; text-align: center; letter-spacing: 1px;
-  }
-  .container { padding: 16px; }
+
   .card {
-    background: var(--charcoal); padding: 16px; border-radius: 10px;
-    margin-bottom: 12px; border: 1px solid var(--line);
+    background: var(--card-color);
+    border: 3px solid var(--thick-outline);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 16px;
+    box-shadow: 4px 4px 0px var(--thick-outline);
   }
-  h3 { margin: 0 0 5px 0; }
-  .topic-hint { color: var(--muted); font-size: 0.85em; margin: 0; }
-  
-  /* Buttons */
-  .btn-primary {
-    width: 100%; padding: 12px; background: var(--accent); 
-    color: #fff; border: none; border-radius: 8px; font-weight: bold;
+
+  .btn {
+    display: block; width: 100%;
+    background: var(--card-color); color: var(--text-main);
+    border: 3px solid var(--thick-outline);
+    border-radius: 10px; padding: 12px;
+    font-weight: bold; font-size: 1rem;
+    cursor: pointer; transition: 0.1s;
+    box-shadow: 3px 3px 0px var(--thick-outline);
+    margin-top: 10px;
   }
-  
-  /* Bottom Navigation */
+  .btn:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px transparent; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 3px 3px 0px #5a4bcf; }
+  .btn-danger { background: var(--card-color); color: var(--danger); border-color: var(--danger); box-shadow: 3px 3px 0px #b33949; }
+  .btn-success { background: var(--card-color); color: var(--green); border-color: var(--green); box-shadow: 3px 3px 0px #2f855a; }
+
+  header {
+    padding: 18px 16px;
+    border-bottom: 3px solid var(--thick-outline);
+    background: var(--bg-color);
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
+
+  input, textarea {
+    width: 100%; background: var(--bg-color); color: var(--text-main);
+    border: 3px solid var(--thick-outline); border-radius: 8px;
+    padding: 12px; font-size: 1rem; outline: none;
+    margin-bottom: 12px; resize: vertical;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+
   .bottom-nav {
-    position: fixed; bottom: 0; width: 100%; display: flex;
-    background: var(--charcoal); border-top: 1px solid var(--line);
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; background: var(--card-color);
+    border-top: 3px solid var(--thick-outline);
     padding-bottom: env(safe-area-inset-bottom);
+    z-index: 50;
   }
   .nav-btn {
-    flex: 1; padding: 12px 4px; background: none; border: none;
-    color: var(--muted); cursor: pointer; display: flex;
-    flex-direction: column; align-items: center; gap: 4px;
-    font-size: 0.75rem;
+    flex: 1; padding: 14px 4px;
+    background: transparent; border: none; border-right: 3px solid var(--thick-outline);
+    color: var(--text-muted); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
   }
-  .nav-btn.active { color: var(--accent); }
-  .icon { font-size: 1.2rem; }
+  .nav-btn:last-child { border-right: none; }
+  .nav-btn.active { color: var(--accent); background: rgba(139, 124, 255, 0.1); }
+  .nav-icon { font-size: 1.4rem; }
+
+  .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .title-row h3 { margin: 0; }
+  .back-btn { background: none; border: none; color: var(--accent); font-weight: bold; font-size: 1rem; cursor: pointer; padding: 0; }
+  
+  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .calc-btn { padding: 15px 0; font-size: 1.2rem; border-radius: 8px; }
+  
+  .option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .option-row input { margin-bottom: 0; }
 </style>
 </head>
 <body>
-  
-  <div class="header" id="headerTitle">SUBJECTS</div>
-  <div class="container" id="app"></div>
-  
-  <div class="bottom-nav">
-    <button class="nav-btn" onclick="nav('calculator')" id="nav-calc">
-      <span class="icon">🖩</span><span>Calculator</span>
-    </button>
-    <button class="nav-btn active" onclick="nav('subject')" id="nav-sub">
-      <span class="icon">📓</span><span>Subjects</span>
-    </button>
-    <button class="nav-btn" onclick="nav('settings')" id="nav-set">
-      <span class="icon">⚙️</span><span>Settings</span>
-    </button>
-  </div>
+
+<div id="app"></div>
+
+<div class="bottom-nav">
+  <button class="nav-btn" id="nav-calc" onclick="setTab('calculator')">
+    <span class="nav-icon">🖩</span><span>Calc</span>
+  </button>
+  <button class="nav-btn active" id="nav-sub" onclick="setTab('subjects')">
+    <span class="nav-icon">📓</span><span>Subjects</span>
+  </button>
+  <button class="nav-btn" id="nav-set" onclick="setTab('settings')">
+    <span class="nav-icon">⚙️</span><span>Settings</span>
+  </button>
+</div>
 
 <script>
-  let currentTab = 'subject';
+  let currentTab = 'subjects';
+  let viewStack = ['dashboard'];
+  let activeSubjectId = null;
+  let activeTopicId = null;
+  
+  // Temporary state for building a question manually
+  let draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
+  
+  let db = JSON.parse(localStorage.getItem('study_app_data')) || { subjects: [] };
 
-  function nav(tab) {
+  function saveData() {
+    localStorage.setItem('study_app_data', JSON.stringify(db));
+  }
+
+  function setTab(tab) {
     currentTab = tab;
-    // Update active styles on the buttons
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     if(tab === 'calculator') document.getElementById('nav-calc').classList.add('active');
-    if(tab === 'subject') document.getElementById('nav-sub').classList.add('active');
+    if(tab === 'subjects') {
+      document.getElementById('nav-sub').classList.add('active');
+      viewStack = ['dashboard'];
+    }
     if(tab === 'settings') document.getElementById('nav-set').classList.add('active');
+    render();
+  }
+
+  function goBack() {
+    if (viewStack.length > 1) {
+      viewStack.pop();
+      render();
+    }
+  }
+
+  function addSubject() {
+    const name = prompt('Enter new subject name:');
+    if (name && name.trim() !== '') {
+      db.subjects.push({ id: Date.now().toString(), name: name.trim(), topics: [] });
+      saveData();
+      render();
+    }
+  }
+
+  function addTopic() {
+    const name = prompt('Enter new topic name:');
+    if (name && name.trim() !== '') {
+      const subject = db.subjects.find(s => s.id === activeSubjectId);
+      subject.topics.push({ id: Date.now().toString(), name: name.trim(), content: '', quiz: [] });
+      saveData();
+      render();
+    }
+  }
+
+  function saveNotes(topicId) {
+    const textarea = document.getElementById('topic-notes');
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === topicId);
+    topic.content = textarea.value;
+    saveData();
+    alert('Notes saved!');
+  }
+
+  function addQuestionToTopic() {
+    if (!draftQuestion.question.trim() || draftQuestion.options.some(o => !o.trim())) {
+      alert('Please fill out the question and all 4 options.');
+      return;
+    }
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+    
+    topic.quiz.push({ ...draftQuestion });
+    saveData();
+    
+    // Reset draft
+    draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
+    render();
+  }
+
+  function deleteQuestion(index) {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+    topic.quiz.splice(index, 1);
+    saveData();
     render();
   }
 
   function render() {
     const app = document.getElementById('app');
-    const header = document.getElementById('headerTitle');
     app.innerHTML = '';
-    
+
     if (currentTab === 'calculator') {
-      header.innerText = 'CALCULATOR';
-      app.innerHTML = '<div class="card">Your calculator panel will go here.</div>';
-    
+      app.innerHTML = buildCalculator();
     } else if (currentTab === 'settings') {
-      header.innerText = 'SETTINGS';
-      app.innerHTML = '<div class="card">App settings and data export will go here.</div>';
-    
-    } else {
-      header.innerText = 'SUBJECTS';
-      // Placeholder data to show what the layout will look like
-      app.innerHTML = `
-        <div class="card">
-          <h3>Professional Education</h3>
-          <p class="topic-hint">Topics: Teacher Evaluation Frameworks, PPST</p>
-        </div>
-        <div class="card">
-          <h3>Major in Mathematics</h3>
-          <p class="topic-hint">Topics: Math Self-Efficacy, Research Variables</p>
-        </div>
-        <button class="btn-primary" onclick="alert('Add subject functionality coming next!')">+ Add New Subject</button>
-      `;
+      app.innerHTML = buildSettings();
+    } else if (currentTab === 'subjects') {
+      const currentView = viewStack[viewStack.length - 1];
+      if (currentView === 'dashboard') app.innerHTML = buildDashboard();
+      if (currentView === 'topicList') app.innerHTML = buildTopicList();
+      if (currentView === 'topicDetail') app.innerHTML = buildTopicDetail();
     }
   }
 
-  // Initial render when the page loads
+  function buildHeader(title, showBack = false) {
+    return `
+      <header>
+        ${showBack ? `<button class="back-btn" onclick="goBack()">◀ BACK</button>` : '<div></div>'}
+        <h1>${title}</h1>
+        <div></div>
+      </header>
+    `;
+  }
+
+  function buildDashboard() {
+    let html = buildHeader('My Subjects');
+    if (db.subjects.length === 0) {
+      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No subjects yet. Add one below!</p></div>`;
+    } else {
+      db.subjects.forEach(sub => {
+        html += `
+          <div class="card" onclick="activeSubjectId='${sub.id}'; viewStack.push('topicList'); render();" style="cursor:pointer;">
+            <div class="title-row">
+              <h3>${sub.name}</h3>
+              <span style="color:var(--text-muted)">▶</span>
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-muted);">${sub.topics.length} Topics</div>
+          </div>
+        `;
+      });
+    }
+    html += `<div style="padding: 16px;"><button class="btn btn-primary" onclick="addSubject()">+ Add Subject</button></div>`;
+    return html;
+  }
+
+  function buildTopicList() {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    let html = buildHeader(subject.name, true);
+    if (subject.topics.length === 0) {
+      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics yet.</p></div>`;
+    } else {
+      subject.topics.forEach(top => {
+        html += `
+          <div class="card" onclick="activeTopicId='${top.id}'; viewStack.push('topicDetail'); render();" style="cursor:pointer;">
+            <div class="title-row">
+              <h3>${top.name}</h3>
+              <span style="color:var(--text-muted)">▶</span>
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-muted);">${top.quiz.length} Quiz Questions</div>
+          </div>
+        `;
+      });
+    }
+    html += `<div style="padding: 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div>`;
+    return html;
+  }
+
+  function buildTopicDetail() {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+    
+    let html = buildHeader(topic.name, true);
+    
+    // Notes Section
+    html += `
+      <div class="card">
+        <h3>Topic Notes</h3>
+        <textarea id="topic-notes" rows="6" placeholder="Paste your study notes here...">${topic.content}</textarea>
+        <button class="btn btn-primary" onclick="saveNotes('${topic.id}')">Save Notes</button>
+      </div>
+    `;
+
+    // Existing Questions List
+    html += `<div class="card"><h3>Manual Quiz Builder (${topic.quiz.length} Questions)</h3>`;
+    if (topic.quiz.length > 0) {
+      topic.quiz.forEach((q, idx) => {
+        html += `
+          <div style="background:var(--bg-color); border:2px solid var(--thick-outline); padding:10px; border-radius:8px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+              <strong>Q${idx + 1}: ${q.question}</strong>
+              <button class="btn btn-danger" style="width:auto; padding:4px 8px; margin:0; font-size:0.8rem;" onclick="deleteQuestion(${idx})">X</button>
+            </div>
+            <ul style="margin:6px 0 0 16px; padding:0; font-size:0.9rem; color:var(--text-muted);">
+              ${q.options.map((opt, oIdx) => `<li style="color:${oIdx === q.correctIndex ? 'var(--green)' : 'inherit'};">${opt} ${oIdx === q.correctIndex ? '(Correct)' : ''}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      });
+    } else {
+      html += `<p style="color:var(--text-muted); font-size:0.9rem;">No questions added to this topic yet.</p>`;
+    }
+    html += `</div>`;
+
+    // Add New Question Form Card
+    html += `
+      <div class="card">
+        <h3>Add Question</h3>
+        <label style="font-size:0.8rem; color:var(--text-muted);">Question Text</label>
+        <input type="text" id="draft-q" value="${draftQuestion.question}" oninput="draftQuestion.question=this.value" placeholder="Enter question...">
+        
+        <label style="font-size:0.8rem; color:var(--text-muted);">Options (Select the correct one)</label>
+    `;
+
+    for (let i = 0; i < 4; i++) {
+      html += `
+        <div class="option-row">
+          <input type="radio" name="correct-opt" ${draftQuestion.correctIndex === i ? 'checked' : ''} onclick="draftQuestion.correctIndex=${i}">
+          <input type="text" value="${draftQuestion.options[i]}" oninput="draftQuestion.options[${i}]=this.value" placeholder="Option ${String.fromCharCode(65 + i)}">
+        </div>
+      `;
+    }
+
+    html += `
+        <button class="btn btn-success" style="margin-top:12px;" onclick="addQuestionToTopic()">+ Save Question</button>
+      </div>
+    `;
+
+    return html;
+  }
+
+  function buildCalculator() {
+    let html = buildHeader('Calculator');
+    html += `
+      <div class="card">
+        <input type="text" id="calc-display" readonly style="font-size:1.5rem; text-align:right;" placeholder="0">
+        <div class="calc-grid">
+          <button class="btn calc-btn" onclick="calcPress('7')">7</button>
+          <button class="btn calc-btn" onclick="calcPress('8')">8</button>
+          <button class="btn calc-btn" onclick="calcPress('9')">9</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('/')">÷</button>
+          
+          <button class="btn calc-btn" onclick="calcPress('4')">4</button>
+          <button class="btn calc-btn" onclick="calcPress('5')">5</button>
+          <button class="btn calc-btn" onclick="calcPress('6')">6</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('*')">×</button>
+          
+          <button class="btn calc-btn" onclick="calcPress('1')">1</button>
+          <button class="btn calc-btn" onclick="calcPress('2')">2</button>
+          <button class="btn calc-btn" onclick="calcPress('3')">3</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('-')">-</button>
+          
+          <button class="btn calc-btn btn-danger" onclick="calcClear()">C</button>
+          <button class="btn calc-btn" onclick="calcPress('0')">0</button>
+          <button class="btn calc-btn" onclick="calcPress('.')">.</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('+')">+</button>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px;" onclick="calcEval()">=</button>
+      </div>
+    `;
+    return html;
+  }
+
+  let calcExpr = "";
+  window.calcPress = (val) => { calcExpr += val; document.getElementById('calc-display').value = calcExpr; }
+  window.calcClear = () => { calcExpr = ""; document.getElementById('calc-display').value = ""; }
+  window.calcEval = () => { 
+    try { 
+      calcExpr = eval(calcExpr).toString(); 
+      document.getElementById('calc-display').value = calcExpr; 
+    } catch(e) { 
+      document.getElementById('calc-display').value = "Error"; 
+      calcExpr = ""; 
+    } 
+  }
+
+  function buildSettings() {
+    let html = buildHeader('Settings');
+    html += `
+      <div class="card">
+        <h3>Data Management</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem;">Your study data is saved locally on this device.</p>
+        <button class="btn btn-danger" onclick="clearAllData()">Reset All Data</button>
+      </div>
+    `;
+    return html;
+  }
+
+  window.clearAllData = () => {
+    if (confirm("Are you sure? This will delete all subjects, topics, and quizzes.")) {
+      localStorage.removeItem('study_app_data');
+      db = { subjects: [] };
+      render();
+    }
+  }
+
   render();
 </script>
 </body>
-  </html>
+</html>
