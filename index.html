@@ -59,7 +59,6 @@
   }
   header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
 
-  /* Slidable Subject Bar at the Top */
   .subject-bar {
     display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px;
     background: var(--card-color); border-bottom: 3px solid var(--thick-outline);
@@ -122,6 +121,16 @@
   
   .option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .option-row input { margin-bottom: 0; }
+
+  /* Quiz Mode Styles */
+  .quiz-option {
+    background: var(--bg-color); border: 2px solid var(--thick-outline);
+    padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
+    font-weight: bold; box-shadow: 2px 2px 0px var(--thick-outline);
+  }
+  .quiz-option.selected { border-color: var(--accent); background: rgba(139, 124, 255, 0.15); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(79, 209, 139, 0.2); color: var(--green); }
+  .quiz-option.incorrect { border-color: var(--danger); background: rgba(255, 101, 119, 0.2); color: var(--danger); }
 </style>
 </head>
 <body>
@@ -142,14 +151,20 @@
 
 <script>
   let currentTab = 'subjects';
-  let viewStack = ['topicList']; // topicList or topicDetail
+  let viewStack = ['topicList']; // topicList, topicDetail, takeQuiz
   let activeSubjectId = null;
   let activeTopicId = null;
   
   let draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
+  
+  // Quiz taking state
+  let quizIndex = 0;
+  let quizSelectedOpt = null;
+  let quizScore = 0;
+  let quizAnswered = false;
+
   let db = JSON.parse(localStorage.getItem('study_app_data')) || { subjects: [] };
 
-  // Set default active subject if available
   if (db.subjects.length > 0 && !activeSubjectId) {
     activeSubjectId = db.subjects[0].id;
   }
@@ -260,6 +275,21 @@
     render();
   }
 
+  function startQuizSession() {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+    if (topic.quiz.length === 0) {
+      alert('Add at least one question before taking the quiz!');
+      return;
+    }
+    quizIndex = 0;
+    quizScore = 0;
+    quizSelectedOpt = null;
+    quizAnswered = false;
+    viewStack.push('takeQuiz');
+    render();
+  }
+
   function render() {
     const app = document.getElementById('app');
     app.innerHTML = '';
@@ -273,11 +303,8 @@
       const currentView = viewStack[viewStack.length - 1];
       if (currentView === 'topicList') app.innerHTML += buildTopicList();
       if (currentView === 'topicDetail') app.innerHTML += buildTopicDetail();
+      if (currentView === 'takeQuiz') app.innerHTML += buildQuizSession();
     }
-  }
-
-  function buildHeader(title) {
-    return `<header><div></div><h1>${title}</h1><div></div></header>`;
   }
 
   function buildSubjectScroller() {
@@ -340,6 +367,17 @@
       </div>
     `;
     
+    // Take Quiz Button Section
+    if (topic.quiz.length > 0) {
+      html += `
+        <div class="card" style="background:var(--accent); border-color:#5a4bcf; color:#fff;">
+          <h3 style="margin-bottom:6px;">Ready to Practice?</h3>
+          <p style="margin:0 0 12px 0; font-size:0.9rem; opacity:0.9;">Take the interactive quiz for this topic (${topic.quiz.length} questions available).</p>
+          <button class="btn" style="background:#fff; color:var(--accent); border-color:#fff;" onclick="startQuizSession()">🚀 Take Quiz Now</button>
+        </div>
+      `;
+    }
+
     // Notes Section
     html += `
       <div class="card">
@@ -349,8 +387,8 @@
       </div>
     `;
 
-    // Existing Questions List
-    html += `<div class="card"><h3>Manual Quiz Builder (${topic.quiz.length} Questions)</h3>`;
+    // Existing Questions List & Builder
+    html += `<div class="card"><h3>Manage Quiz Questions (${topic.quiz.length})</h3>`;
     if (topic.quiz.length > 0) {
       topic.quiz.forEach((q, idx) => {
         html += `
@@ -397,6 +435,79 @@
     return html;
   }
 
+  function buildQuizSession() {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+
+    if (quizIndex >= topic.quiz.length) {
+      // Results screen
+      const percentage = Math.round((quizScore / topic.quiz.length) * 100);
+      return `
+        <div style="padding: 0 4px;">
+          <div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="goBack()">◀ BACK TO TOPIC</button></div>
+          <div class="card" style="text-align:center;">
+            <h2>Quiz Complete! 🎉</h2>
+            <p style="font-size: 1.5rem; font-weight:bold; color:var(--accent); margin: 20px 0;">Score: ${quizScore} / ${topic.quiz.length} (${percentage}%)</p>
+            <button class="btn btn-primary" onclick="startQuizSession()">Retake Quiz</button>
+            <button class="btn" style="margin-top:10px;" onclick="goBack()">Back to Topic</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const q = topic.quiz[quizIndex];
+    let html = `
+      <div style="padding: 0 4px;">
+        <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
+          <button class="back-btn" onclick="goBack()">◀ QUIT QUIZ</button>
+          <span style="font-size:0.85rem; color:var(--text-muted);">Question ${quizIndex + 1} of ${topic.quiz.length}</span>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:16px; font-size:1.1rem; line-height:1.4;">${q.question}</h3>
+    `;
+
+    q.options.forEach((opt, idx) => {
+      let optClass = 'quiz-option';
+      if (quizAnswered) {
+        if (idx === q.correctIndex) optClass += ' correct';
+        else if (idx === quizSelectedOpt) optClass += ' incorrect';
+      } else if (quizSelectedOpt === idx) {
+        optClass += ' selected';
+      }
+
+      html += `<div class="${optClass}" onclick="${quizAnswered ? '' : `quizSelectedOpt=${idx}; render();`}">${String.fromCharCode(65 + idx)}. ${opt}</div>`;
+    });
+
+    if (!quizAnswered) {
+      html += `<button class="btn btn-primary" style="margin-top:16px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.5;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
+    } else {
+      html += `<button class="btn btn-primary" style="margin-top:16px;" onclick="nextQuizQuestion()">Next Question ➔</button>`;
+    }
+
+    html += `</div></div>`;
+    return html;
+  }
+
+  function submitQuizAnswer() {
+    if (quizSelectedOpt === null) return;
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const q = topic.quiz[quizIndex];
+
+    if (quizSelectedOpt === q.correctIndex) {
+      quizScore++;
+    }
+    quizAnswered = true;
+    render();
+  }
+
+  function nextQuizQuestion() {
+    quizIndex++;
+    quizSelectedOpt = null;
+    quizAnswered = false;
+    render();
+  }
+
   function buildCalculator() {
     let html = buildHeader('Calculator');
     html += `
@@ -405,65 +516,4 @@
         <div class="calc-grid">
           <button class="btn calc-btn" onclick="calcPress('7')">7</button>
           <button class="btn calc-btn" onclick="calcPress('8')">8</button>
-          <button class="btn calc-btn" onclick="calcPress('9')">9</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('/')">÷</button>
-          
-          <button class="btn calc-btn" onclick="calcPress('4')">4</button>
-          <button class="btn calc-btn" onclick="calcPress('5')">5</button>
-          <button class="btn calc-btn" onclick="calcPress('6')">6</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('*')">×</button>
-          
-          <button class="btn calc-btn" onclick="calcPress('1')">1</button>
-          <button class="btn calc-btn" onclick="calcPress('2')">2</button>
-          <button class="btn calc-btn" onclick="calcPress('3')">3</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('-')">-</button>
-          
-          <button class="btn calc-btn btn-danger" onclick="calcClear()">C</button>
-          <button class="btn calc-btn" onclick="calcPress('0')">0</button>
-          <button class="btn calc-btn" onclick="calcPress('.')">.</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('+')">+</button>
-        </div>
-        <button class="btn btn-primary" style="margin-top:10px;" onclick="calcEval()">=</button>
-      </div>
-    `;
-    return html;
-  }
-
-  let calcExpr = "";
-  window.calcPress = (val) => { calcExpr += val; document.getElementById('calc-display').value = calcExpr; }
-  window.calcClear = () => { calcExpr = ""; document.getElementById('calc-display').value = ""; }
-  window.calcEval = () => { 
-    try { 
-      calcExpr = eval(calcExpr).toString(); 
-      document.getElementById('calc-display').value = calcExpr; 
-    } catch(e) { 
-      document.getElementById('calc-display').value = "Error"; 
-      calcExpr = ""; 
-    } 
-  }
-
-  function buildSettings() {
-    let html = buildHeader('Settings');
-    html += `
-      <div class="card">
-        <h3>Data Management</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem;">Your study data is saved locally on this device.</p>
-        <button class="btn btn-danger" onclick="clearAllData()">Reset All Data</button>
-      </div>
-    `;
-    return html;
-  }
-
-  window.clearAllData = () => {
-    if (confirm("Are you sure? This will delete all subjects, topics, and quizzes.")) {
-      localStorage.removeItem('study_app_data');
-      db = { subjects: [] };
-      activeSubjectId = null;
-      render();
-    }
-  }
-
-  render();
-</script>
-</body>
-</html>
+ 
