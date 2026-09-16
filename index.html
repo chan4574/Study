@@ -59,6 +59,34 @@
   }
   header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
 
+  /* Slidable Subject Bar at the Top */
+  .subject-bar {
+    display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px;
+    background: var(--card-color); border-bottom: 3px solid var(--thick-outline);
+    white-space: nowrap; align-items: center; scrollbar-width: none;
+  }
+  .subject-bar::-webkit-scrollbar { display: none; }
+  
+  .subject-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-color); border: 2px solid var(--thick-outline);
+    padding: 8px 14px; border-radius: 20px; font-weight: bold;
+    cursor: pointer; color: var(--text-main); flex-shrink: 0;
+    box-shadow: 2px 2px 0px var(--thick-outline);
+  }
+  .subject-chip.active {
+    background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 2px 2px 0px #5a4bcf;
+  }
+  .chip-add {
+    background: var(--green); color: #0b0d12; border: 2px solid var(--thick-outline);
+    padding: 8px 14px; border-radius: 20px; font-weight: bold;
+    cursor: pointer; flex-shrink: 0; box-shadow: 2px 2px 0px var(--thick-outline);
+  }
+  .chip-del {
+    background: none; border: none; color: inherit; cursor: pointer;
+    font-size: 0.9rem; padding: 0; font-weight: bold; margin-left: 4px;
+  }
+
   input, textarea {
     width: 100%; background: var(--bg-color); color: var(--text-main);
     border: 3px solid var(--thick-outline); border-radius: 8px;
@@ -114,14 +142,17 @@
 
 <script>
   let currentTab = 'subjects';
-  let viewStack = ['dashboard'];
+  let viewStack = ['topicList']; // topicList or topicDetail
   let activeSubjectId = null;
   let activeTopicId = null;
   
-  // Temporary state for building a question manually
   let draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
-  
   let db = JSON.parse(localStorage.getItem('study_app_data')) || { subjects: [] };
+
+  // Set default active subject if available
+  if (db.subjects.length > 0 && !activeSubjectId) {
+    activeSubjectId = db.subjects[0].id;
+  }
 
   function saveData() {
     localStorage.setItem('study_app_data', JSON.stringify(db));
@@ -133,7 +164,7 @@
     if(tab === 'calculator') document.getElementById('nav-calc').classList.add('active');
     if(tab === 'subjects') {
       document.getElementById('nav-sub').classList.add('active');
-      viewStack = ['dashboard'];
+      viewStack = ['topicList'];
     }
     if(tab === 'settings') document.getElementById('nav-set').classList.add('active');
     render();
@@ -149,7 +180,25 @@
   function addSubject() {
     const name = prompt('Enter new subject name:');
     if (name && name.trim() !== '') {
-      db.subjects.push({ id: Date.now().toString(), name: name.trim(), topics: [] });
+      const newSub = { id: Date.now().toString(), name: name.trim(), topics: [] };
+      db.subjects.push(newSub);
+      activeSubjectId = newSub.id;
+      viewStack = ['topicList'];
+      saveData();
+      render();
+    }
+  }
+
+  function deleteSubject(id, event) {
+    event.stopPropagation();
+    if (confirm('Delete this subject and all its topics?')) {
+      db.subjects = db.subjects.filter(s => s.id !== id);
+      if (db.subjects.length > 0) {
+        activeSubjectId = db.subjects[0].id;
+      } else {
+        activeSubjectId = null;
+      }
+      viewStack = ['topicList'];
       saveData();
       render();
     }
@@ -159,9 +208,23 @@
     const name = prompt('Enter new topic name:');
     if (name && name.trim() !== '') {
       const subject = db.subjects.find(s => s.id === activeSubjectId);
-      subject.topics.push({ id: Date.now().toString(), name: name.trim(), content: '', quiz: [] });
-      saveData();
-      render();
+      if (subject) {
+        subject.topics.push({ id: Date.now().toString(), name: name.trim(), content: '', quiz: [] });
+        saveData();
+        render();
+      }
+    }
+  }
+
+  function deleteTopic(topicId, event) {
+    event.stopPropagation();
+    if (confirm('Delete this topic?')) {
+      const subject = db.subjects.find(s => s.id === activeSubjectId);
+      if (subject) {
+        subject.topics = subject.topics.filter(t => t.id !== topicId);
+        saveData();
+        render();
+      }
     }
   }
 
@@ -185,7 +248,6 @@
     topic.quiz.push({ ...draftQuestion });
     saveData();
     
-    // Reset draft
     draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
     render();
   }
@@ -207,63 +269,61 @@
     } else if (currentTab === 'settings') {
       app.innerHTML = buildSettings();
     } else if (currentTab === 'subjects') {
+      app.innerHTML = buildSubjectScroller();
       const currentView = viewStack[viewStack.length - 1];
-      if (currentView === 'dashboard') app.innerHTML = buildDashboard();
-      if (currentView === 'topicList') app.innerHTML = buildTopicList();
-      if (currentView === 'topicDetail') app.innerHTML = buildTopicDetail();
+      if (currentView === 'topicList') app.innerHTML += buildTopicList();
+      if (currentView === 'topicDetail') app.innerHTML += buildTopicDetail();
     }
   }
 
-  function buildHeader(title, showBack = false) {
-    return `
-      <header>
-        ${showBack ? `<button class="back-btn" onclick="goBack()">◀ BACK</button>` : '<div></div>'}
-        <h1>${title}</h1>
-        <div></div>
-      </header>
-    `;
+  function buildHeader(title) {
+    return `<header><div></div><h1>${title}</h1><div></div></header>`;
   }
 
-  function buildDashboard() {
-    let html = buildHeader('My Subjects');
-    if (db.subjects.length === 0) {
-      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No subjects yet. Add one below!</p></div>`;
-    } else {
-      db.subjects.forEach(sub => {
-        html += `
-          <div class="card" onclick="activeSubjectId='${sub.id}'; viewStack.push('topicList'); render();" style="cursor:pointer;">
-            <div class="title-row">
-              <h3>${sub.name}</h3>
-              <span style="color:var(--text-muted)">▶</span>
-            </div>
-            <div style="font-size:0.85rem; color:var(--text-muted);">${sub.topics.length} Topics</div>
-          </div>
-        `;
-      });
-    }
-    html += `<div style="padding: 16px;"><button class="btn btn-primary" onclick="addSubject()">+ Add Subject</button></div>`;
+  function buildSubjectScroller() {
+    let html = `<div class="subject-bar">`;
+    db.subjects.forEach(sub => {
+      const isActive = sub.id === activeSubjectId ? 'active' : '';
+      html += `
+        <div class="subject-chip ${isActive}" onclick="activeSubjectId='${sub.id}'; viewStack=['topicList']; render();">
+          ${sub.name}
+          <button class="chip-del" onclick="deleteSubject('${sub.id}', event)">×</button>
+        </div>
+      `;
+    });
+    html += `<button class="chip-add" onclick="addSubject()">+ Sub</button></div>`;
     return html;
   }
 
   function buildTopicList() {
+    if (db.subjects.length === 0) {
+      return `<div class="card"><p style="text-align:center; color:var(--text-muted);">No subjects yet. Tap "+ Sub" above to create one!</p></div>`;
+    }
+
     const subject = db.subjects.find(s => s.id === activeSubjectId);
-    let html = buildHeader(subject.name, true);
+    if (!subject) return `<div class="card"><p style="text-align:center; color:var(--text-muted);">Select a subject above.</p></div>`;
+
+    let html = `<div style="padding: 0 4px;"><h2 style="margin: 16px 16px 8px 16px; font-size:1.1rem; color:var(--accent);">${subject.name} Topics</h2>`;
+    
     if (subject.topics.length === 0) {
-      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics yet.</p></div>`;
+      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics in this subject yet.</p></div>`;
     } else {
       subject.topics.forEach(top => {
         html += `
           <div class="card" onclick="activeTopicId='${top.id}'; viewStack.push('topicDetail'); render();" style="cursor:pointer;">
             <div class="title-row">
               <h3>${top.name}</h3>
-              <span style="color:var(--text-muted)">▶</span>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-danger" style="width:auto; padding:4px 8px; margin:0; font-size:0.8rem;" onclick="deleteTopic('${top.id}', event)">Delete</button>
+                <span style="color:var(--text-muted)">▶</span>
+              </div>
             </div>
             <div style="font-size:0.85rem; color:var(--text-muted);">${top.quiz.length} Quiz Questions</div>
           </div>
         `;
       });
     }
-    html += `<div style="padding: 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div>`;
+    html += `<div style="padding: 0 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div></div>`;
     return html;
   }
 
@@ -271,7 +331,14 @@
     const subject = db.subjects.find(s => s.id === activeSubjectId);
     const topic = subject.topics.find(t => t.id === activeTopicId);
     
-    let html = buildHeader(topic.name, true);
+    let html = `
+      <div style="padding: 0 4px;">
+        <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
+          <button class="back-btn" onclick="goBack()">◀ BACK TO TOPICS</button>
+          <span style="font-size:0.85rem; color:var(--text-muted);">${topic.name}</span>
+        </div>
+      </div>
+    `;
     
     // Notes Section
     html += `
@@ -391,6 +458,7 @@
     if (confirm("Are you sure? This will delete all subjects, topics, and quizzes.")) {
       localStorage.removeItem('study_app_data');
       db = { subjects: [] };
+      activeSubjectId = null;
       render();
     }
   }
