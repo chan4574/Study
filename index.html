@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Offline Study App</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#1a1d24">
 <style>
   :root {
     --bg-color: #0b0d12;
@@ -13,12 +13,16 @@
     --text-main: #f2f4f8;
     --text-muted: #9aa4b5;
     --accent: #8b7cff;
-    --accent-hover: #6f61ed;
     --thick-outline: #242936;
     --danger: #ff6577;
     --green: #4fd18b;
-    --casio-dark: #1a1f2c;
-    --casio-btn: #222836;
+    --casio-body: #161920;
+    --casio-screen: #d7e2cb;
+    --casio-screen-text: #111;
+    --casio-btn: #262c38;
+    --casio-btn-shift: #eab308;
+    --casio-btn-alpha: #ec4899;
+    --casio-btn-ac: #22c55e;
   }
   
   * { box-sizing: border-box; font-family: sans-serif; }
@@ -92,16 +96,35 @@
   .title-row h3 { margin: 0; }
   .back-btn { background: none; border: none; color: var(--accent); font-weight: bold; font-size: 1rem; cursor: pointer; padding: 0; }
   
-  /* Casio Scientific Calculator Grid */
-  .calc-container { background: var(--casio-dark); border: 3px solid var(--thick-outline); border-radius: 12px; padding: 12px; box-shadow: 4px 4px 0px var(--thick-outline); margin: 12px 16px; }
-  .calc-screen { background: #0f141d; border: 2px solid var(--thick-outline); border-radius: 8px; padding: 12px; text-align: right; margin-bottom: 12px; }
-  #calc-display { width: 100%; background: transparent; border: none; color: var(--green); font-size: 1.6rem; text-align: right; outline: none; font-family: monospace; }
-  .calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .calc-btn { padding: 10px 0; font-size: 0.95rem; border-radius: 6px; margin-top: 0; background: var(--casio-btn); color: var(--text-main); font-weight: bold; }
-  .calc-btn-op { background: #1f2937; color: var(--accent); }
-  .calc-btn-sci { background: #2a2238; color: #d8b4fe; font-size: 0.85rem; }
-  .calc-btn-danger { background: #3b1c24; color: var(--danger); }
-  .calc-btn-equal { background: var(--accent); color: #fff; }
+  /* Casio fx-350ES Plus Authentic Layout Styles */
+  .casio-body {
+    background: var(--casio-body); border: 3px solid #2b3342; border-radius: 16px;
+    padding: 14px; max-width: 420px; margin: 12px auto; box-shadow: 6px 6px 0px var(--thick-outline);
+  }
+  .casio-brand-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding: 0 4px; }
+  .casio-logo { font-weight: 900; font-style: italic; font-size: 1.15rem; letter-spacing: 1px; color: #fff; }
+  .casio-model { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; }
+  
+  .casio-screen-box {
+    background: var(--casio-screen); border: 3px solid #374151; border-radius: 8px;
+    padding: 10px; margin-bottom: 12px; min-height: 75px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .casio-screen-top { font-size: 0.75rem; color: #4b5563; font-family: monospace; text-align: right; min-height: 16px; }
+  .casio-screen-main { font-size: 1.4rem; color: var(--casio-screen-text); font-family: monospace; text-align: right; font-weight: bold; outline: none; border: none; background: transparent; width: 100%; }
+
+  .casio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .c-btn {
+    background: var(--casio-btn); color: #fff; border: 2px solid #111; border-radius: 6px;
+    padding: 10px 0; font-size: 0.8rem; font-weight: bold; cursor: pointer; text-align: center;
+    box-shadow: 0 3px 0 #111; transition: 0.05s;
+  }
+  .c-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #111; }
+  .c-btn-shift { color: #facc15; }
+  .c-btn-alpha { color: #f472b6; }
+  .c-btn-op { background: #1f2937; color: #93c5fd; }
+  .c-btn-ac { background: #15803d; color: #fff; }
+  .c-btn-del { background: #15803d; color: #fff; }
+  .c-btn-equals { background: #4f46e5; color: #fff; }
 
   .quiz-option {
     background: var(--bg-color); border: 2px solid var(--thick-outline);
@@ -142,10 +165,10 @@
   <button class="nav-btn" id="nav-set" onclick="setTab('settings')">
     <span class="nav-icon">⚙️</span><span>Settings</span>
   </button>
-  </div>
-  <script>
+</div>
+<script>
   let currentTab = 'subjects';
-  let viewStack = ['topicList']; // topicList, topicDetail, takeQuiz
+  let viewStack = ['topicList'];
   let activeTopicId = null;
   let openMenuTopicId = null;
   
@@ -156,11 +179,10 @@
   let quizScore = 0;
   let quizAnswered = false;
 
-  // Simplified DB structure holding topics directly at the root
-  let db = JSON.parse(localStorage.getItem('study_app_data_v2')) || { topics: [] };
+  let db = JSON.parse(localStorage.getItem('study_app_data_v3')) || { topics: [] };
 
   function saveData() {
-    localStorage.setItem('study_app_data_v2', JSON.stringify(db));
+    localStorage.setItem('study_app_data_v3', JSON.stringify(db));
   }
 
   function setTab(tab) {
@@ -274,7 +296,7 @@
     if(done) parsedQuestions.push(done);
 
     if(parsedQuestions.length === 0) {
-      alert('Could not parse questions. Make sure they are numbered (1., 2.) and options are labeled (A., B., C., D.) with a symbol like ✅ on the correct answer.');
+      alert('Could not parse questions. Ensure they are numbered (1., 2.) with options (A., B., C., D.) and a symbol like ✅ on the correct answer.');
       return;
     }
 
@@ -477,49 +499,82 @@
     render();
   }
 
-  // Casio Scientific Calculator Logic
+  // Casio fx-350ES Plus Layout-Exact Scientific Calculator Logic
   function buildCalculator() {
-    let html = `<header><div></div><h1>Scientific Calculator</h1><div></div></header>`;
-    html += `
-      <div class="calc-container">
-        <div class="calc-screen">
-          <input type="text" id="calc-display" readonly value="${calcExpr || '0'}">
+    let html = `
+      <div class="casio-body">
+        <div class="casio-brand-row">
+          <span class="casio-logo">CASIO</span>
+          <span class="casio-model">fx-350ES PLUS</span>
         </div>
-        <div class="calc-grid">
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('sin(')">sin</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('cos(')">cos</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('tan(')">tan</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.sqrt(')">√</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcClear()">AC</button>
+        
+        <div class="casio-screen-box">
+          <div class="casio-screen-top" id="calc-top">Math</div>
+          <input type="text" class="casio-screen-main" id="calc-display" readonly value="${calcExpr || '0'}">
+        </div>
 
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.log10(')">log</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.log(')">ln</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('**')">x^y</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.PI')">π</button>
-          <button class="btn calc-btn calc-btn-danger" onclick="calcBackspace()">⌫</button>
+        <div class="casio-grid">
+          <!-- Row 1: Shift, Alpha, Mode, etc. -->
+          <button class="c-btn c-btn-shift">SHIFT</button>
+          <button class="c-btn c-btn-alpha">ALPHA</button>
+          <button class="c-btn" style="grid-column: span 2; font-size: 0.7rem;" onclick="calcClear()">MODE SETUP</button>
+          <button class="c-btn" style="background:#b91c1c; color:#fff;" onclick="calcClear()">ON</button>
 
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('(')">(</button>
-          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend(')')">)</button>
-          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('%')">%</button>
-          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('/')">÷</button>
-          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('*')">×</button>
+          <!-- Row 2 -->
+          <button class="c-btn" onclick="calcAppend('Math.abs(')">Abs</button>
+          <button class="c-btn" onclick="calcAppend('**3')">x³</button>
+          <button class="c-btn" onclick="calcAppend('**(-1)')">x⁻¹</button>
+          <button class="c-btn" onclick="calcAppend('Math.log10(')">log</button>
+          <button class="c-btn" onclick="calcAppend('Math.log(')">ln</button>
 
-          <button class="btn calc-btn" onclick="calcAppend('7')">7</button>
-          <button class="btn calc-btn" onclick="calcAppend('8')">8</button>
-          <button class="btn calc-btn" onclick="calcAppend('9')">9</button>
-          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('-')">-</button>
-          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('+')">+</button>
+          <!-- Row 3 -->
+          <button class="c-btn" onclick="calcAppend('Math.sqrt(')">√</button>
+          <button class="c-btn" onclick="calcAppend('**2')">x²</button>
+          <button class="c-btn" onclick="calcAppend('**')">x^y</button>
+          <button class="c-btn" onclick="calcAppend('Math.log(')">log_</button>
+          <button class="c-btn" onclick="calcAppend('Math.exp(1)')">eˣ</button>
 
-          <button class="btn calc-btn" onclick="calcAppend('4')">4</button>
-          <button class="btn calc-btn" onclick="calcAppend('5')">5</button>
-          <button class="btn calc-btn" onclick="calcAppend('6')">6</button>
-          <button class="btn calc-btn" onclick="calcAppend('1')">1</button>
-          <button class="btn calc-btn" onclick="calcAppend('2')">2</button>
+          <!-- Row 4 -->
+          <button class="c-btn" onclick="calcAppend('(-')">(-)</button>
+          <button class="c-btn" onclick="calcAppend('deg')">° ’ ”</button>
+          <button class="c-btn" onclick="calcAppend('hyp')">hyp</button>
+          <button class="c-btn" onclick="calcAppend('Math.sin(')">sin</button>
+          <button class="c-btn" onclick="calcAppend('Math.cos(')">cos</button>
 
-          <button class="btn calc-btn" onclick="calcAppend('3')">3</button>
-          <button class="btn calc-btn" onclick="calcAppend('0')">0</button>
-          <button class="btn calc-btn" onclick="calcAppend('.')">.</button>
-          <button class="btn calc-btn calc-btn-equal" style="grid-column: span 2;" onclick="calcEval()">=</button>
+          <!-- Row 5 -->
+          <button class="c-btn" onclick="calcAppend('tan(')">tan</button>
+          <button class="c-btn" onclick="calcAppend('RCL')">RCL</button>
+          <button class="c-btn" onclick="calcAppend('(')">(</button>
+          <button class="c-btn" onclick="calcAppend(')')">)</button>
+          <button class="c-btn" onclick="calcAppend('S')">S⇔D</button>
+
+          <!-- Row 6: Number Matrix & Ops -->
+          <button class="c-btn" onclick="calcAppend('7')">7</button>
+          <button class="c-btn" onclick="calcAppend('8')">8</button>
+          <button class="c-btn" onclick="calcAppend('9')">9</button>
+          <button class="c-btn c-btn-del" onclick="calcBackspace()">DEL</button>
+          <button class="c-btn c-btn-ac" onclick="calcClear()">AC</button>
+
+          <!-- Row 7 -->
+          <button class="c-btn" onclick="calcAppend('4')">4</button>
+          <button class="c-btn" onclick="calcAppend('5')">5</button>
+          <button class="c-btn" onclick="calcAppend('6')">6</button>
+          <button class="c-btn c-btn-op" onclick="calcAppend('*')">×</button>
+          <button class="c-btn c-btn-op" onclick="calcAppend('/')">÷</button>
+
+          <!-- Row 8 -->
+          <button class="c-btn" onclick="calcAppend('1')">1</button>
+          <button class="c-btn" onclick="calcAppend('2')">2</button>
+          <button class="c-btn" onclick="calcAppend('3')">3</button>
+          <button class="c-btn c-btn-op" onclick="calcAppend('+')">+</button>
+          <button class="c-btn c-btn-op" onclick="calcAppend('-')">-</button>
+
+          <!-- Row 9 -->
+          <button class="c-btn" onclick="calcAppend('0')">0</button>
+          <button class="c-btn" onclick="calcAppend('.')">.</button>
+          <button class="c-btn" onclick="calcAppend('Math.PI')">π</button>
+          <button class="c-btn" onclick="calcEval()">Ans</button>
+          <button class="c-btn c-btn-equals" onclick="calcEval()">=</button>
         </div>
       </div>
     `;
@@ -541,7 +596,6 @@
   }
   window.calcEval = () => { 
     try { 
-      // Safe evaluation mapping standard math expressions
       let evaluated = eval(calcExpr);
       calcExpr = evaluated.toString(); 
       document.getElementById('calc-display').value = calcExpr; 
@@ -565,7 +619,7 @@
 
   window.clearAllData = () => {
     if (confirm("Are you sure? This will delete all topics and quizzes.")) {
-      localStorage.removeItem('study_app_data_v2');
+      localStorage.removeItem('study_app_data_v3');
       db = { topics: [] };
       render();
     }
@@ -574,4 +628,4 @@
   render();
 </script>
 </body>
-  </html>
+</html>
