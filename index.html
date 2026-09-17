@@ -17,6 +17,8 @@
     --thick-outline: #242936;
     --danger: #ff6577;
     --green: #4fd18b;
+    --casio-dark: #1a1f2c;
+    --casio-btn: #222836;
   }
   
   * { box-sizing: border-box; font-family: sans-serif; }
@@ -60,33 +62,6 @@
   }
   header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
 
-  .subject-bar {
-    display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px;
-    background: var(--card-color); border-bottom: 3px solid var(--thick-outline);
-    white-space: nowrap; align-items: center; scrollbar-width: none;
-  }
-  .subject-bar::-webkit-scrollbar { display: none; }
-  
-  .subject-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--bg-color); border: 2px solid var(--thick-outline);
-    padding: 8px 14px; border-radius: 20px; font-weight: bold;
-    cursor: pointer; color: var(--text-main); flex-shrink: 0;
-    box-shadow: 2px 2px 0px var(--thick-outline);
-  }
-  .subject-chip.active {
-    background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 2px 2px 0px #5a4bcf;
-  }
-  .chip-add {
-    background: var(--green); color: #0b0d12; border: 2px solid var(--thick-outline);
-    padding: 8px 14px; border-radius: 20px; font-weight: bold;
-    cursor: pointer; flex-shrink: 0; box-shadow: 2px 2px 0px var(--thick-outline);
-  }
-  .chip-del {
-    background: none; border: none; color: inherit; cursor: pointer;
-    font-size: 0.9rem; padding: 0; font-weight: bold; margin-left: 4px;
-  }
-
   input, textarea {
     width: 100%; background: var(--bg-color); color: var(--text-main);
     border: 3px solid var(--thick-outline); border-radius: 8px;
@@ -117,8 +92,16 @@
   .title-row h3 { margin: 0; }
   .back-btn { background: none; border: none; color: var(--accent); font-weight: bold; font-size: 1rem; cursor: pointer; padding: 0; }
   
-  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .calc-btn { padding: 15px 0; font-size: 1.2rem; border-radius: 8px; }
+  /* Casio Scientific Calculator Grid */
+  .calc-container { background: var(--casio-dark); border: 3px solid var(--thick-outline); border-radius: 12px; padding: 12px; box-shadow: 4px 4px 0px var(--thick-outline); margin: 12px 16px; }
+  .calc-screen { background: #0f141d; border: 2px solid var(--thick-outline); border-radius: 8px; padding: 12px; text-align: right; margin-bottom: 12px; }
+  #calc-display { width: 100%; background: transparent; border: none; color: var(--green); font-size: 1.6rem; text-align: right; outline: none; font-family: monospace; }
+  .calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .calc-btn { padding: 10px 0; font-size: 0.95rem; border-radius: 6px; margin-top: 0; background: var(--casio-btn); color: var(--text-main); font-weight: bold; }
+  .calc-btn-op { background: #1f2937; color: var(--accent); }
+  .calc-btn-sci { background: #2a2238; color: #d8b4fe; font-size: 0.85rem; }
+  .calc-btn-danger { background: #3b1c24; color: var(--danger); }
+  .calc-btn-equal { background: var(--accent); color: #fff; }
 
   .quiz-option {
     background: var(--bg-color); border: 2px solid var(--thick-outline);
@@ -129,7 +112,6 @@
   .quiz-option.correct { border-color: var(--green); background: rgba(79, 209, 139, 0.2); color: var(--green); }
   .quiz-option.incorrect { border-color: var(--danger); background: rgba(255, 101, 119, 0.2); color: var(--danger); }
 
-  /* Three dot menu styles */
   .menu-container { position: relative; display: inline-block; }
   .dots-btn { background: none; border: none; color: var(--text-main); font-size: 1.4rem; font-weight: bold; cursor: pointer; padding: 0 6px; }
   .dropdown-menu {
@@ -155,16 +137,15 @@
     <span class="nav-icon">🖩</span><span>Calc</span>
   </button>
   <button class="nav-btn active" id="nav-sub" onclick="setTab('subjects')">
-    <span class="nav-icon">📓</span><span>Subjects</span>
+    <span class="nav-icon">📓</span><span>Topics</span>
   </button>
   <button class="nav-btn" id="nav-set" onclick="setTab('settings')">
     <span class="nav-icon">⚙️</span><span>Settings</span>
   </button>
-</div>
-<script>
+  </div>
+  <script>
   let currentTab = 'subjects';
   let viewStack = ['topicList']; // topicList, topicDetail, takeQuiz
-  let activeSubjectId = null;
   let activeTopicId = null;
   let openMenuTopicId = null;
   
@@ -175,14 +156,11 @@
   let quizScore = 0;
   let quizAnswered = false;
 
-  let db = JSON.parse(localStorage.getItem('study_app_data')) || { subjects: [] };
-
-  if (db.subjects.length > 0 && !activeSubjectId) {
-    activeSubjectId = db.subjects[0].id;
-  }
+  // Simplified DB structure holding topics directly at the root
+  let db = JSON.parse(localStorage.getItem('study_app_data_v2')) || { topics: [] };
 
   function saveData() {
-    localStorage.setItem('study_app_data', JSON.stringify(db));
+    localStorage.setItem('study_app_data_v2', JSON.stringify(db));
   }
 
   function setTab(tab) {
@@ -204,45 +182,15 @@
     }
   }
 
-  function addSubject() {
-    const name = prompt('Enter new subject name:');
-    if (name && name.trim() !== '') {
-      const newSub = { id: Date.now().toString(), name: name.trim(), topics: [] };
-      db.subjects.push(newSub);
-      activeSubjectId = newSub.id;
-      viewStack = ['topicList'];
-      saveData();
-      render();
-    }
-  }
-
-  function deleteSubject(id, event) {
-    event.stopPropagation();
-    if (confirm('Delete this subject and all its topics?')) {
-      db.subjects = db.subjects.filter(s => s.id !== id);
-      if (db.subjects.length > 0) {
-        activeSubjectId = db.subjects[0].id;
-      } else {
-        activeSubjectId = null;
-      }
-      viewStack = ['topicList'];
-      saveData();
-      render();
-    }
-  }
-
   function addTopic() {
     const name = prompt('Enter new topic name:');
     if (name && name.trim() !== '') {
-      const subject = db.subjects.find(s => s.id === activeSubjectId);
-      if (subject) {
-        const newTopic = { id: Date.now().toString(), name: name.trim(), quiz: [] };
-        subject.topics.push(newTopic);
-        activeTopicId = newTopic.id;
-        viewStack.push('topicDetail');
-        saveData();
-        render();
-      }
+      const newTopic = { id: Date.now().toString(), name: name.trim(), quiz: [] };
+      db.topics.push(newTopic);
+      activeTopicId = newTopic.id;
+      viewStack.push('topicDetail');
+      saveData();
+      render();
     }
   }
 
@@ -264,25 +212,19 @@
     event.stopPropagation();
     openMenuTopicId = null;
     if (confirm('Delete this topic?')) {
-      const subject = db.subjects.find(s => s.id === activeSubjectId);
-      if (subject) {
-        subject.topics = subject.topics.filter(t => t.id !== topicId);
-        saveData();
-        render();
-      }
+      db.topics = db.topics.filter(t => t.id !== topicId);
+      saveData();
+      render();
     }
   }
 
   function handleTopicClick(topicId) {
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === topicId);
+    const topic = db.topics.find(t => t.id === topicId);
     activeTopicId = topicId;
     
     if (topic.quiz.length === 0) {
-      // If no questions yet, go straight to edit/add questions view
       viewStack.push('topicDetail');
     } else {
-      // If questions exist, automatically start the quiz!
       quizIndex = 0;
       quizScore = 0;
       quizSelectedOpt = null;
@@ -336,8 +278,7 @@
       return;
     }
 
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === topicId);
+    const topic = db.topics.find(t => t.id === topicId);
     topic.quiz.push(...parsedQuestions);
     bulkPasteText = '';
     saveData();
@@ -346,16 +287,14 @@
   }
 
   function deleteQuestion(index) {
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const topic = db.topics.find(t => t.id === activeTopicId);
     topic.quiz.splice(index, 1);
     saveData();
     render();
   }
 
   function startQuizSession() {
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const topic = db.topics.find(t => t.id === activeTopicId);
     if (topic.quiz.length === 0) {
       alert('Add at least one question before taking the quiz!');
       return;
@@ -377,7 +316,6 @@
     } else if (currentTab === 'settings') {
       app.innerHTML = buildSettings();
     } else if (currentTab === 'subjects') {
-      app.innerHTML = buildSubjectScroller();
       const currentView = viewStack[viewStack.length - 1];
       if (currentView === 'topicList') app.innerHTML += buildTopicList();
       if (currentView === 'topicDetail') app.innerHTML += buildTopicDetail();
@@ -385,35 +323,14 @@
     }
   }
 
-  function buildSubjectScroller() {
-    let html = `<div class="subject-bar">`;
-    db.subjects.forEach(sub => {
-      const isActive = sub.id === activeSubjectId ? 'active' : '';
-      html += `
-        <div class="subject-chip ${isActive}" onclick="activeSubjectId='${sub.id}'; viewStack=['topicList']; render();">
-          ${sub.name}
-          <button class="chip-del" onclick="deleteSubject('${sub.id}', event)">×</button>
-        </div>
-      `;
-    });
-    html += `<button class="chip-add" onclick="addSubject()">+ Sub</button></div>`;
-    return html;
-  }
-
   function buildTopicList() {
-    if (db.subjects.length === 0) {
-      return `<div class="card"><p style="text-align:center; color:var(--text-muted);">No subjects yet. Tap "+ Sub" above to create one!</p></div>`;
-    }
-
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    if (!subject) return `<div class="card"><p style="text-align:center; color:var(--text-muted);">Select a subject above.</p></div>`;
-
-    let html = `<div style="padding: 0 4px;"><h2 style="margin: 16px 16px 8px 16px; font-size:1.1rem; color:var(--accent);">${subject.name} Topics</h2>`;
+    let html = `<header><div></div><h1>My Topics</h1><div></div></header>`;
+    html += `<div style="padding: 0 4px;">`;
     
-    if (subject.topics.length === 0) {
-      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics in this subject yet. Tap below to create one!</p></div>`;
+    if (db.topics.length === 0) {
+      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics yet. Tap below to create one!</p></div>`;
     } else {
-      subject.topics.forEach(top => {
+      db.topics.forEach(top => {
         const isMenuOpen = openMenuTopicId === top.id;
         html += `
           <div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;">
@@ -432,13 +349,12 @@
         `;
       });
     }
-    html += `<div style="padding: 0 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div></div>`;
+    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div></div>`;
     return html;
   }
 
   function buildTopicDetail() {
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const topic = db.topics.find(t => t.id === activeTopicId);
     
     let html = `
       <div style="padding: 0 4px;">
@@ -492,8 +408,7 @@
   }
 
   function buildQuizSession() {
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const topic = db.topics.find(t => t.id === activeTopicId);
 
     if (quizIndex >= topic.quiz.length) {
       const percentage = Math.round((quizScore / topic.quiz.length) * 100);
@@ -545,8 +460,7 @@
 
   function submitQuizAnswer() {
     if (quizSelectedOpt === null) return;
-    const subject = db.subjects.find(s => s.id === activeSubjectId);
-    const topic = subject.topics.find(t => t.id === activeTopicId);
+    const topic = db.topics.find(t => t.id === activeTopicId);
     const q = topic.quiz[quizIndex];
 
     if (quizSelectedOpt === q.correctIndex) {
@@ -563,44 +477,73 @@
     render();
   }
 
+  // Casio Scientific Calculator Logic
   function buildCalculator() {
-    let html = `<header><div></div><h1>Calculator</h1><div></div></header>`;
+    let html = `<header><div></div><h1>Scientific Calculator</h1><div></div></header>`;
     html += `
-      <div class="card">
-        <input type="text" id="calc-display" readonly style="font-size:1.5rem; text-align:right;" placeholder="0">
-        <div class="calc-grid">
-          <button class="btn calc-btn" onclick="calcPress('7')">7</button>
-          <button class="btn calc-btn" onclick="calcPress('8')">8</button>
-          <button class="btn calc-btn" onclick="calcPress('9')">9</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('/')">÷</button>
-          
-          <button class="btn calc-btn" onclick="calcPress('4')">4</button>
-          <button class="btn calc-btn" onclick="calcPress('5')">5</button>
-          <button class="btn calc-btn" onclick="calcPress('6')">6</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('*')">×</button>
-          
-          <button class="btn calc-btn" onclick="calcPress('1')">1</button>
-          <button class="btn calc-btn" onclick="calcPress('2')">2</button>
-          <button class="btn calc-btn" onclick="calcPress('3')">3</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('-')">-</button>
-          
-          <button class="btn calc-btn btn-danger" onclick="calcClear()">C</button>
-          <button class="btn calc-btn" onclick="calcPress('0')">0</button>
-          <button class="btn calc-btn" onclick="calcPress('.')">.</button>
-          <button class="btn calc-btn btn-primary" onclick="calcPress('+')">+</button>
+      <div class="calc-container">
+        <div class="calc-screen">
+          <input type="text" id="calc-display" readonly value="${calcExpr || '0'}">
         </div>
-        <button class="btn btn-primary" style="margin-top:10px;" onclick="calcEval()">=</button>
+        <div class="calc-grid">
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('sin(')">sin</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('cos(')">cos</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('tan(')">tan</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.sqrt(')">√</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcClear()">AC</button>
+
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.log10(')">log</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.log(')">ln</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('**')">x^y</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('Math.PI')">π</button>
+          <button class="btn calc-btn calc-btn-danger" onclick="calcBackspace()">⌫</button>
+
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend('(')">(</button>
+          <button class="btn calc-btn calc-btn-sci" onclick="calcAppend(')')">)</button>
+          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('%')">%</button>
+          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('/')">÷</button>
+          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('*')">×</button>
+
+          <button class="btn calc-btn" onclick="calcAppend('7')">7</button>
+          <button class="btn calc-btn" onclick="calcAppend('8')">8</button>
+          <button class="btn calc-btn" onclick="calcAppend('9')">9</button>
+          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('-')">-</button>
+          <button class="btn calc-btn calc-btn-op" onclick="calcAppend('+')">+</button>
+
+          <button class="btn calc-btn" onclick="calcAppend('4')">4</button>
+          <button class="btn calc-btn" onclick="calcAppend('5')">5</button>
+          <button class="btn calc-btn" onclick="calcAppend('6')">6</button>
+          <button class="btn calc-btn" onclick="calcAppend('1')">1</button>
+          <button class="btn calc-btn" onclick="calcAppend('2')">2</button>
+
+          <button class="btn calc-btn" onclick="calcAppend('3')">3</button>
+          <button class="btn calc-btn" onclick="calcAppend('0')">0</button>
+          <button class="btn calc-btn" onclick="calcAppend('.')">.</button>
+          <button class="btn calc-btn calc-btn-equal" style="grid-column: span 2;" onclick="calcEval()">=</button>
+        </div>
       </div>
     `;
     return html;
   }
 
   let calcExpr = "";
-  window.calcPress = (val) => { calcExpr += val; document.getElementById('calc-display').value = calcExpr; }
-  window.calcClear = () => { calcExpr = ""; document.getElementById('calc-display').value = ""; }
+  window.calcAppend = (val) => { 
+    calcExpr += val; 
+    document.getElementById('calc-display').value = calcExpr; 
+  }
+  window.calcClear = () => { 
+    calcExpr = ""; 
+    document.getElementById('calc-display').value = "0"; 
+  }
+  window.calcBackspace = () => {
+    calcExpr = calcExpr.slice(0, -1);
+    document.getElementById('calc-display').value = calcExpr || "0";
+  }
   window.calcEval = () => { 
     try { 
-      calcExpr = eval(calcExpr).toString(); 
+      // Safe evaluation mapping standard math expressions
+      let evaluated = eval(calcExpr);
+      calcExpr = evaluated.toString(); 
       document.getElementById('calc-display').value = calcExpr; 
     } catch(e) { 
       document.getElementById('calc-display').value = "Error"; 
@@ -621,10 +564,9 @@
   }
 
   window.clearAllData = () => {
-    if (confirm("Are you sure? This will delete all subjects, topics, and quizzes.")) {
-      localStorage.removeItem('study_app_data');
-      db = { subjects: [] };
-      activeSubjectId = null;
+    if (confirm("Are you sure? This will delete all topics and quizzes.")) {
+      localStorage.removeItem('study_app_data_v2');
+      db = { topics: [] };
       render();
     }
   }
@@ -632,4 +574,4 @@
   render();
 </script>
 </body>
-</html>
+  </html>
