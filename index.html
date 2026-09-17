@@ -122,7 +122,6 @@
   .option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .option-row input { margin-bottom: 0; }
 
-  /* Quiz Mode Styles */
   .quiz-option {
     background: var(--bg-color); border: 2px solid var(--thick-outline);
     padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
@@ -148,16 +147,14 @@
     <span class="nav-icon">⚙️</span><span>Settings</span>
   </button>
 </div>
-
 <script>
   let currentTab = 'subjects';
-  let viewStack = ['topicList']; // topicList, topicDetail, takeQuiz
+  let viewStack = ['topicList'];
   let activeSubjectId = null;
   let activeTopicId = null;
   
   let draftQuestion = { question: '', options: ['', '', '', ''], correctIndex: 0 };
   
-  // Quiz taking state
   let quizIndex = 0;
   let quizSelectedOpt = null;
   let quizScore = 0;
@@ -367,7 +364,6 @@
       </div>
     `;
     
-    // Take Quiz Button Section
     if (topic.quiz.length > 0) {
       html += `
         <div class="card" style="background:var(--accent); border-color:#5a4bcf; color:#fff;">
@@ -378,7 +374,6 @@
       `;
     }
 
-    // Notes Section
     html += `
       <div class="card">
         <h3>Topic Notes</h3>
@@ -387,7 +382,6 @@
       </div>
     `;
 
-    // Existing Questions List & Builder
     html += `<div class="card"><h3>Manage Quiz Questions (${topic.quiz.length})</h3>`;
     if (topic.quiz.length > 0) {
       topic.quiz.forEach((q, idx) => {
@@ -408,7 +402,6 @@
     }
     html += `</div>`;
 
-    // Add New Question Form Card
     html += `
       <div class="card">
         <h3>Add Question</h3>
@@ -440,7 +433,6 @@
     const topic = subject.topics.find(t => t.id === activeTopicId);
 
     if (quizIndex >= topic.quiz.length) {
-      // Results screen
       const percentage = Math.round((quizScore / topic.quiz.length) * 100);
       return `
         <div style="padding: 0 4px;">
@@ -509,11 +501,72 @@
   }
 
   function buildCalculator() {
-    let html = buildHeader('Calculator');
+    let html = `<header><div></div><h1>Calculator</h1><div></div></header>`;
     html += `
       <div class="card">
         <input type="text" id="calc-display" readonly style="font-size:1.5rem; text-align:right;" placeholder="0">
         <div class="calc-grid">
           <button class="btn calc-btn" onclick="calcPress('7')">7</button>
           <button class="btn calc-btn" onclick="calcPress('8')">8</button>
- 
+          <button class="btn calc-btn" onclick="calcPress('9')">9</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('/')">÷</button>
+          
+          <button class="btn calc-btn" onclick="calcPress('4')">4</button>
+          <button class="btn calc-btn" onclick="calcPress('5')">5</button>
+          <button class="btn calc-btn" onclick="calcPress('6')">6</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('*')">×</button>
+          
+          <button class="btn calc-btn" onclick="calcPress('1')">1</button>
+          <button class="btn calc-btn" onclick="calcPress('2')">2</button>
+          <button class="btn calc-btn" onclick="calcPress('3')">3</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('-')">-</button>
+          
+          <button class="btn calc-btn btn-danger" onclick="calcClear()">C</button>
+          <button class="btn calc-btn" onclick="calcPress('0')">0</button>
+          <button class="btn calc-btn" onclick="calcPress('.')">.</button>
+          <button class="btn calc-btn btn-primary" onclick="calcPress('+')">+</button>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px;" onclick="calcEval()">=</button>
+      </div>
+    `;
+    return html;
+  }
+
+  let calcExpr = "";
+  window.calcPress = (val) => { calcExpr += val; document.getElementById('calc-display').value = calcExpr; }
+  window.calcClear = () => { calcExpr = ""; document.getElementById('calc-display').value = ""; }
+  window.calcEval = () => { 
+    try { 
+      calcExpr = eval(calcExpr).toString(); 
+      document.getElementById('calc-display').value = calcExpr; 
+    } catch(e) { 
+      document.getElementById('calc-display').value = "Error"; 
+      calcExpr = ""; 
+    } 
+  }
+
+  function buildSettings() {
+    let html = `<header><div></div><h1>Settings</h1><div></div></header>`;
+    html += `
+      <div class="card">
+        <h3>Data Management</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem;">Your study data is saved locally on this device.</p>
+        <button class="btn btn-danger" onclick="clearAllData()">Reset All Data</button>
+      </div>
+    `;
+    return html;
+  }
+
+  window.clearAllData = () => {
+    if (confirm("Are you sure? This will delete all subjects, topics, and quizzes.")) {
+      localStorage.removeItem('study_app_data');
+      db = { subjects: [] };
+      activeSubjectId = null;
+      render();
+    }
+  }
+
+  render();
+</script>
+</body>
+</html>
