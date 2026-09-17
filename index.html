@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- Added maximum-scale=1.0 so the screen doesn't zoom when drawing -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Offline Study App</title>
 <link rel="manifest" href="manifest.json">
@@ -34,9 +33,9 @@
 
   .btn {
     display: block; width: 100%; background: var(--card-color); color: var(--text-main);
-    border: 3px solid var(--thick-outline); border-radius: 10px; padding: 12px;
-    font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.1s;
-    box-shadow: 3px 3px 0px var(--thick-outline); margin-top: 10px; text-align: center;
+    border: 3px solid var(--thick-outline); border-radius: 10px; padding: 10px;
+    font-weight: bold; font-size: 0.95rem; cursor: pointer; transition: 0.1s;
+    box-shadow: 3px 3px 0px var(--thick-outline); text-align: center;
   }
   .btn:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px transparent; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 3px 3px 0px #5a4bcf; }
@@ -73,18 +72,32 @@
   .title-row h3 { margin: 0; }
   .back-btn { background: none; border: none; color: var(--accent); font-weight: bold; font-size: 1rem; cursor: pointer; padding: 0; }
 
-  /* Scratchpad Styles */
-  .canvas-container {
-    background: #ffffff; border: 3px solid var(--thick-outline);
-    border-radius: 12px; margin: 12px 16px; overflow: hidden;
-    box-shadow: 4px 4px 0px var(--thick-outline);
-    /* Prevents the screen from scrolling when you swipe to draw */
-    touch-action: none; 
+  /* FlipaClip Style Scratchpad UI */
+  .scratch-toolbar {
+    display: flex; gap: 8px; padding: 8px 16px; background: var(--card-color);
+    border-bottom: 3px solid var(--thick-outline); align-items: center; overflow-x: auto;
   }
-  canvas { display: block; width: 100%; height: 65vh; cursor: crosshair; }
-  .tools-row { display: flex; gap: 10px; margin: 0 16px; }
+  .tool-btn {
+    background: var(--bg-color); border: 2px solid var(--thick-outline); color: var(--text-main);
+    padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer;
+    box-shadow: 2px 2px 0px var(--thick-outline); white-space: nowrap; flex-shrink: 0;
+  }
+  .tool-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  
+  .canvas-wrapper {
+    position: relative; width: 100%; height: 60vh; background: #ffffff;
+    border-bottom: 3px solid var(--thick-outline); overflow: hidden; touch-action: none;
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
-  /* Topic App Styles */
+  .canvas-controls {
+    display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card-color);
+    border-bottom: 3px solid var(--thick-outline);
+  }
+  .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: bold; color: var(--text-muted); width: 60%; }
+  .slider-group input { flex: 1; margin: 0; accent-color: var(--accent); }
+
+  /* Topic & Quiz Styles */
   .quiz-option {
     background: var(--bg-color); border: 2px solid var(--thick-outline);
     padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
@@ -107,8 +120,6 @@
     border-bottom: 2px solid var(--thick-outline); text-align: left; background: none; color: var(--text-main); width: 100%;
   }
   .dropdown-item:last-child { border-bottom: none; }
-  
-  /* Import File Input Hide */
   #import-file { display: none; }
 </style>
 </head>
@@ -132,14 +143,23 @@
   let viewStack = ['topicList'];
   let activeTopicId = null;
   let openMenuTopicId = null;
-  
   let bulkPasteText = '';
   
-  // Quiz State
   let quizIndex = 0;
   let quizSelectedOpt = null;
   let quizScore = 0;
   let quizAnswered = false;
+
+  let scratchSavedData = null;
+  let undoStack = [];
+  let redoStack = [];
+  let currentTool = 'pen';
+  let brushSize = 4;
+  let isDrawing = false;
+  let canvas, ctx;
+  let scale = 1, panX = 0, panY = 0;
+  let startX = 0, startY = 0;
+  let initialPinchDist = null;
 
   let db = JSON.parse(localStorage.getItem('study_app_data_v4')) || { topics: [] };
 
@@ -148,6 +168,9 @@
   }
 
   function setTab(tab) {
+    if (currentTab === 'scratchpad' && canvas) {
+      scratchSavedData = canvas.toDataURL();
+    }
     currentTab = tab;
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     if(tab === 'scratchpad') document.getElementById('nav-scratch').classList.add('active');
@@ -166,7 +189,6 @@
     }
   }
 
-  // --- Topic Management ---
   function addTopic() {
     const name = prompt('Enter new topic name:');
     if (name && name.trim() !== '') {
@@ -206,7 +228,6 @@
   function handleTopicClick(topicId) {
     const topic = db.topics.find(t => t.id === topicId);
     activeTopicId = topicId;
-    
     if (topic.quiz.length === 0) {
       viewStack.push('topicDetail');
     } else {
@@ -224,9 +245,7 @@
     const qRe = /^(\d{1,3})[\.\)]\s*(.+)/;
     const optRe = /^([A-Da-d])[\.\)]\s*(.+)/;
     const markers = ['✅','✔️','✔','✓'];
-
-    const parsedQuestions = [];
-    let current = null;
+    let parsedQuestions = [], current = null;
 
     function finalize(c){
       if(!c || !c.question || c.options.length < 2) return null;
@@ -238,7 +257,6 @@
     for(const line of lines){
       const optMatch = line.match(optRe);
       const qMatch = !optMatch ? line.match(qRe) : null;
-
       if(qMatch){
         const done = finalize(current);
         if(done) parsedQuestions.push(done);
@@ -284,22 +302,18 @@
       alert('Add at least one question before taking the quiz!');
       return;
     }
-    quizIndex = 0;
-    quizScore = 0;
-    quizSelectedOpt = null;
-    quizAnswered = false;
+    quizIndex = 0; quizScore = 0; quizSelectedOpt = null; quizAnswered = false;
     viewStack.push('takeQuiz');
     render();
   }
 
-  // --- UI Render Router ---
   function render() {
     const app = document.getElementById('app');
     app.innerHTML = '';
 
     if (currentTab === 'scratchpad') {
       app.innerHTML = buildScratchpad();
-      initCanvas(); // Must run after canvas is added to DOM
+      initCanvas();
     } else if (currentTab === 'settings') {
       app.innerHTML = buildSettings();
     } else if (currentTab === 'subjects') {
@@ -310,10 +324,8 @@
     }
   }
 
-  // --- Views ---
   function buildTopicList() {
     let html = `<header><div></div><h1>My Topics</h1><div></div></header><div style="padding: 0 4px;">`;
-    
     if (db.topics.length === 0) {
       html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics yet. Tap below to create one!</p></div>`;
     } else {
@@ -350,7 +362,6 @@
         </div>
       </div>
     `;
-    
     if (topic.quiz.length > 0) {
       html += `
         <div class="card" style="background:var(--accent); border-color:#5a4bcf; color:#fff;">
@@ -360,7 +371,6 @@
         </div>
       `;
     }
-
     html += `
       <div class="card">
         <h3>Paste AI Quiz Questions</h3>
@@ -369,7 +379,6 @@
         <button class="btn btn-success" onclick="parseAndImportQuestions('${topic.id}')">Import Pasted Questions</button>
       </div>
     `;
-
     html += `<div class="card"><h3>Manage Quiz Questions (${topic.quiz.length})</h3>`;
     if (topic.quiz.length > 0) {
       topic.quiz.forEach((q, idx) => {
@@ -389,13 +398,11 @@
       html += `<p style="color:var(--text-muted); font-size:0.9rem;">No questions added yet. Paste some above!</p>`;
     }
     html += `</div>`;
-
     return html;
   }
 
   function buildQuizSession() {
     const topic = db.topics.find(t => t.id === activeTopicId);
-
     if (quizIndex >= topic.quiz.length) {
       const percentage = Math.round((quizScore / topic.quiz.length) * 100);
       return `
@@ -410,7 +417,6 @@
         </div>
       `;
     }
-
     const q = topic.quiz[quizIndex];
     let html = `
       <div style="padding: 0 4px;">
@@ -421,7 +427,6 @@
         <div class="card">
           <h3 style="margin-bottom:16px; font-size:1.1rem; line-height:1.4;">${q.question}</h3>
     `;
-
     q.options.forEach((opt, idx) => {
       let optClass = 'quiz-option';
       if (quizAnswered) {
@@ -432,7 +437,6 @@
       }
       html += `<div class="${optClass}" onclick="${quizAnswered ? '' : `quizSelectedOpt=${idx}; render();`}">${String.fromCharCode(65 + idx)}. ${opt}</div>`;
     });
-
     if (!quizAnswered) {
       html += `<button class="btn btn-primary" style="margin-top:16px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.5;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
     } else {
@@ -451,25 +455,31 @@
   }
 
   function nextQuizQuestion() {
-    quizIndex++;
-    quizSelectedOpt = null;
-    quizAnswered = false;
+    quizIndex++; quizSelectedOpt = null; quizAnswered = false;
     render();
   }
-
-  // --- Scratchpad Logic ---
-  let isDrawing = false;
-  let ctx = null;
-  let canvas = null;
-
+</script>
+<script>
   function buildScratchpad() {
     return `
       <header><div></div><h1>Scratchpad</h1><div></div></header>
-      <div class="canvas-container">
-        <canvas id="scratch-canvas"></canvas>
+      <div class="scratch-toolbar">
+        <button class="tool-btn ${currentTool==='pen'?'active':''}" onclick="setTool('pen')">✏️ Pen</button>
+        <button class="tool-btn ${currentTool==='eraser'?'active':''}" onclick="setTool('eraser')">🧹 Eraser</button>
+        <button class="tool-btn ${currentTool==='select'?'active':''}" onclick="setTool('select')">✂️ Select</button>
+        <button class="tool-btn" onclick="undo()" title="Undo">↩️</button>
+        <button class="tool-btn" onclick="redo()" title="Redo">↪️</button>
+        <button class="tool-btn" onclick="clearCanvas()" style="color:var(--danger)">Clear</button>
       </div>
-      <div class="tools-row">
-        <button class="btn btn-danger" onclick="clearCanvas()">Clear Board</button>
+      <div class="canvas-controls">
+        <div class="slider-group">
+          <span>Size:</span>
+          <input type="range" min="1" max="30" value="${brushSize}" oninput="updateBrushSize(this.value)">
+        </div>
+        <span style="font-size:0.75rem; color:var(--text-muted)">Pinch to Zoom 🔍</span>
+      </div>
+      <div class="canvas-wrapper" id="canvas-wrap">
+        <canvas id="scratch-canvas"></canvas>
       </div>
     `;
   }
@@ -479,64 +489,165 @@
     if(!canvas) return;
     ctx = canvas.getContext('2d');
     
-    // Resize internal canvas resolution to match CSS display size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    
-    // Style settings for drawing (thick outline style)
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#111111';
+    canvas.width = canvas.parentElement.clientWidth * 2;
+    canvas.height = canvas.parentElement.clientHeight * 2;
+    ctx.scale(2, 2);
 
-    // Touch & Mouse Events
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('mouseup', endDraw);
-    canvas.addEventListener('mousemove', draw);
-    
-    // Passive false is needed to prevent scrolling while drawing
-    canvas.addEventListener('touchstart', startDraw, {passive: false});
-    canvas.addEventListener('touchend', endDraw, {passive: false});
-    canvas.addEventListener('touchmove', draw, {passive: false});
+    if (scratchSavedData) {
+      let img = new Image();
+      img.onload = function() {
+        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
+        saveState();
+      };
+      img.src = scratchSavedData;
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      saveState();
+    }
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+
+    const wrapper = document.getElementById('canvas-wrap');
+    wrapper.addEventListener('touchstart', handleTouchStart, {passive: false});
+    wrapper.addEventListener('touchmove', handleTouchMove, {passive: false});
   }
 
-  function getCoords(e) {
+  function setTool(tool) {
+    currentTool = tool;
+    render();
+  }
+
+  function updateBrushSize(val) {
+    brushSize = parseInt(val);
+  }
+
+  function saveState() {
+    if(!canvas) return;
+    if (undoStack.length > 20) undoStack.shift();
+    undoStack.push(canvas.toDataURL());
+    redoStack = [];
+  }
+
+  function undo() {
+    if (undoStack.length > 1) {
+      redoStack.push(undoStack.pop());
+      let imgData = undoStack[undoStack.length - 1];
+      let img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
+      };
+      img.src = imgData;
+    }
+  }
+
+  function redo() {
+    if (redoStack.length > 0) {
+      let imgData = redoStack.pop();
+      undoStack.push(imgData);
+      let img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
+      };
+      img.src = imgData;
+    }
+  }
+
+  function clearCanvas() {
+    if(confirm("Clear entire canvas?")) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      saveState();
+    }
+  }
+
+  function getCanvasPos(e) {
     const rect = canvas.getBoundingClientRect();
-    if(e.touches && e.touches.length > 0) {
-      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    return {
+      x: (e.clientX - rect.left - panX) / scale,
+      y: (e.clientY - rect.top - panY) / scale
+    };
   }
 
-  function startDraw(e) {
-    e.preventDefault(); // Stop scrolling
+  function handlePointerDown(e) {
+    if (e.pointerType === 'touch' && e.isPrimary === false) return;
     isDrawing = true;
-    draw(e);
-  }
+    const pos = getCanvasPos(e);
+    startX = pos.x; startY = pos.y;
 
-  function endDraw(e) {
-    e.preventDefault();
-    isDrawing = false;
-    ctx.beginPath(); // Reset path so next line doesn't connect
-  }
-
-  function draw(e) {
-    e.preventDefault();
-    if(!isDrawing) return;
-    const { x, y } = getCoords(e);
-    
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  }
-
-  window.clearCanvas = () => {
-    if(ctx && canvas) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (currentTool === 'pen') {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (currentTool === 'eraser') {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = brushSize * 3;
+      ctx.lineCap = 'round';
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (currentTool === 'select') {
+      isSelecting = true;
     }
   }
 
-  // --- Settings & Data Backup ---
+  function handlePointerMove(e) {
+    if (!isDrawing) return;
+    const pos = getCanvasPos(e);
+    if (currentTool === 'pen' || currentTool === 'eraser') {
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+  }
+
+  function handlePointerUp(e) {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (currentTool === 'pen' || currentTool === 'eraser') {
+      saveState();
+    }
+    if (currentTool === 'select' && isSelecting) {
+      isSelecting = false;
+      alert("Selection mode: Dragged selection cleared area.");
+    }
+  }
+
+  function handleTouchStart(e) {
+    if (e.touches.length === 2) {
+      initialPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (e.touches.length === 2 && initialPinchDist) {
+      e.preventDefault();
+      let currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      let factor = currentDist / initialPinchDist;
+      scale = Math.min(Math.max(0.5, scale * factor), 4);
+      initialPinchDist = currentDist;
+      updateCanvasTransform();
+    }
+  }
+
+  function updateCanvasTransform() {
+    canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+
   function buildSettings() {
     let html = `<header><div></div><h1>Settings</h1><div></div></header>`;
     html += `
@@ -596,7 +707,6 @@
     }
   }
 
-  // Start app
   render();
 </script>
 </body>
