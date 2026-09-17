@@ -33,6 +33,7 @@
     padding: 16px;
     margin: 12px 16px;
     box-shadow: 4px 4px 0px var(--thick-outline);
+    position: relative;
   }
 
   .btn {
@@ -127,6 +128,22 @@
   .quiz-option.selected { border-color: var(--accent); background: rgba(139, 124, 255, 0.15); }
   .quiz-option.correct { border-color: var(--green); background: rgba(79, 209, 139, 0.2); color: var(--green); }
   .quiz-option.incorrect { border-color: var(--danger); background: rgba(255, 101, 119, 0.2); color: var(--danger); }
+
+  /* Three dot menu styles */
+  .menu-container { position: relative; display: inline-block; }
+  .dots-btn { background: none; border: none; color: var(--text-main); font-size: 1.4rem; font-weight: bold; cursor: pointer; padding: 0 6px; }
+  .dropdown-menu {
+    position: absolute; right: 0; top: 30px; background: var(--card-color);
+    border: 3px solid var(--thick-outline); border-radius: 8px; z-index: 20;
+    box-shadow: 3px 3px 0px var(--thick-outline); display: none; min-width: 110px;
+  }
+  .dropdown-menu.show { display: block; }
+  .dropdown-item {
+    padding: 10px 14px; font-size: 0.9rem; font-weight: bold; cursor: pointer;
+    border-bottom: 2px solid var(--thick-outline); text-align: left; background: none; color: var(--text-main); width: 100%;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: rgba(139, 124, 255, 0.15); }
 </style>
 </head>
 <body>
@@ -149,6 +166,7 @@
   let viewStack = ['topicList']; // topicList, topicDetail, takeQuiz
   let activeSubjectId = null;
   let activeTopicId = null;
+  let openMenuTopicId = null;
   
   let bulkPasteText = '';
   
@@ -228,8 +246,23 @@
     }
   }
 
+  function toggleMenu(topicId, event) {
+    event.stopPropagation();
+    openMenuTopicId = (openMenuTopicId === topicId) ? null : topicId;
+    render();
+  }
+
+  function editTopic(topicId, event) {
+    event.stopPropagation();
+    openMenuTopicId = null;
+    activeTopicId = topicId;
+    viewStack.push('topicDetail');
+    render();
+  }
+
   function deleteTopic(topicId, event) {
     event.stopPropagation();
+    openMenuTopicId = null;
     if (confirm('Delete this topic?')) {
       const subject = db.subjects.find(s => s.id === activeSubjectId);
       if (subject) {
@@ -238,6 +271,25 @@
         render();
       }
     }
+  }
+
+  function handleTopicClick(topicId) {
+    const subject = db.subjects.find(s => s.id === activeSubjectId);
+    const topic = subject.topics.find(t => t.id === topicId);
+    activeTopicId = topicId;
+    
+    if (topic.quiz.length === 0) {
+      // If no questions yet, go straight to edit/add questions view
+      viewStack.push('topicDetail');
+    } else {
+      // If questions exist, automatically start the quiz!
+      quizIndex = 0;
+      quizScore = 0;
+      quizSelectedOpt = null;
+      quizAnswered = false;
+      viewStack.push('takeQuiz');
+    }
+    render();
   }
 
   function parseAndImportQuestions(topicId) {
@@ -362,13 +414,17 @@
       html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics in this subject yet. Tap below to create one!</p></div>`;
     } else {
       subject.topics.forEach(top => {
+        const isMenuOpen = openMenuTopicId === top.id;
         html += `
-          <div class="card" onclick="activeTopicId='${top.id}'; viewStack.push('topicDetail'); render();" style="cursor:pointer;">
+          <div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;">
             <div class="title-row">
               <h3>${top.name}</h3>
-              <div style="display:flex; align-items:center; gap:10px;">
-                <button class="btn btn-danger" style="width:auto; padding:4px 8px; margin:0; font-size:0.8rem;" onclick="deleteTopic('${top.id}', event)">Delete</button>
-                <span style="color:var(--text-muted)">▶</span>
+              <div class="menu-container">
+                <button class="dots-btn" onclick="toggleMenu('${top.id}', event)">⋮</button>
+                <div class="dropdown-menu ${isMenuOpen ? 'show' : ''}">
+                  <button class="dropdown-item" onclick="editTopic('${top.id}', event)">Edit</button>
+                  <button class="dropdown-item" style="color:var(--danger);" onclick="deleteTopic('${top.id}', event)">Delete</button>
+                </div>
               </div>
             </div>
             <div style="font-size:0.85rem; color:var(--text-muted);">${top.quiz.length} Quiz Questions</div>
