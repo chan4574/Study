@@ -201,7 +201,6 @@
     }
   }
 
-  // --- Topic Management ---
   function addTopic() {
     const name = prompt('Enter new topic name:');
     if (name && name.trim() !== '') {
@@ -488,7 +487,6 @@
     quizAnswered = false;
     render();
   }
-
   // --- Casio Calculator Logic ---
   window.calcToggle = (mode) => {
     if (mode === 'shift') { shiftMode = !shiftMode; alphaMode = false; }
@@ -496,7 +494,6 @@
     render();
   }
 
-  // Handles standard, shifted, and alpha inputs modularly
   window.calcAppend = (std, shft = null, alph = null) => {
     if (shiftMode && shft) calcExpr += shft;
     else if (alphaMode && alph) calcExpr += alph;
@@ -511,7 +508,6 @@
   
   window.calcEval = () => { 
     try { 
-      // Parse scientific notation and functions to standard JS
       let jsExpr = calcExpr
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
@@ -533,7 +529,6 @@
 
       let evaluated = eval(jsExpr);
       
-      // Handle floating point weirdness
       if (!Number.isInteger(evaluated)) {
         evaluated = parseFloat(evaluated.toFixed(8));
       }
@@ -610,4 +605,42 @@
           <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('1')">1</button></div>
           <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('2')">2</button></div>
           <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('3')">3</button></div>
-          <div class="btn-wrap"><div class="c-labels"><span class="lbl-shift">Pol</span></div><button class="c-btn
+          <div class="btn-wrap"><div class="c-labels"><span class="lbl-shift">Pol</span></div><button class="c-btn btn-op" onclick="calcAppend('+')">+</button></div>
+          <div class="btn-wrap"><div class="c-labels"><span class="lbl-shift">Rec</span></div><button class="c-btn btn-op" onclick="calcAppend('-')">-</button></div>
+
+          <!-- Row 9 -->
+          <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('0')">0</button></div>
+          <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('.')">.</button></div>
+          <div class="btn-wrap"><div class="c-labels"><span class="lbl-shift">π</span><span class="lbl-alpha">e</span></div><button class="c-btn btn-num" onclick="calcAppend('×10^', 'π', 'e')">×10ˣ</button></div>
+          <div class="btn-wrap"><button class="c-btn btn-num" onclick="calcAppend('Ans')">Ans</button></div>
+          <div class="btn-wrap"><button class="c-btn btn-op" style="background: #4f46e5;" onclick="calcEval()">=</button></div>
+        </div>
+      </div>
+    `;
+    return html;
+  }
+
+  function buildSettings() {
+    let html = `<header><div></div><h1>Settings</h1><div></div></header>`;
+    html += `
+      <div class="card">
+        <h3>Data Management</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem;">Your study data is saved locally on this device.</p>
+        <button class="btn btn-danger" onclick="clearAllData()">Reset All Data</button>
+      </div>
+    `;
+    return html;
+  }
+
+  window.clearAllData = () => {
+    if (confirm("Are you sure? This will delete all topics and quizzes.")) {
+      localStorage.removeItem('study_app_data_v4');
+      db = { topics: [] };
+      render();
+    }
+  }
+
+  render();
+</script>
+</body>
+</html>
