@@ -234,6 +234,7 @@
     cursor: pointer;
     padding: 8px 0;
   }
+
   .quiz-option {
     background: var(--bg-secondary);
     border: 2px solid var(--border);
@@ -260,7 +261,6 @@
     background: var(--success-glow);
     color: var(--success);
   }
-
   .quiz-option.incorrect {
     border-color: var(--danger);
     background: var(--danger-glow);
@@ -484,6 +484,7 @@
     <span class="nav-icon">🎴</span><span>Cards</span>
   </button>
 </div>
+
 <script>
   let currentTab = 'subjects';
   let viewStack = ['topicList'];
@@ -501,6 +502,7 @@
   
   let fcMode = 'study';
   let quizMode = 'play';
+  let selectedFlashcardTopic = null;
 
   let newFlashcardFront = '';
   let newFlashcardBack = '';
@@ -515,12 +517,7 @@
       oldDb.topics.forEach(t => {
         if (t.flashcards) {
           t.flashcards.forEach(fc => {
-            db.flashcards.push({
-              id: fc.id,
-              topicName: t.name,
-              front: fc.front,
-              back: fc.back
-            });
+            db.flashcards.push({ id: fc.id, topicName: t.name, front: fc.front, back: fc.back });
           });
           delete t.flashcards;
         }
@@ -531,7 +528,6 @@
   function saveData() {
     localStorage.setItem('study_app_data_v6', JSON.stringify(db));
   }
-
   function setTab(tab) {
     currentTab = tab;
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -545,12 +541,14 @@
       flashcardIndex = 0;
       isFlipped = false;
       fcMode = 'study';
+      selectedFlashcardTopic = null; 
     }
     render();
   }
 
   function setFcMode(mode) {
     fcMode = mode;
+    if (mode === 'study') selectedFlashcardTopic = null;
     render();
   }
 
@@ -570,14 +568,7 @@
   function addTopic() {
     const name = prompt('Enter new topic name for quizzes:');
     if (name && name.trim() !== '') {
-      const newTopic = { 
-        id: Date.now().toString(), 
-        name: name.trim(), 
-        quiz: []
-      };
-      db.topics.push(newTopic);
-      activeTopicId = newTopic.id;
-      viewStack.push('topicDetail');
+      db.topics.push({ id: Date.now().toString(), name: name.trim(), quiz: [] });
       saveData();
       render();
     }
@@ -650,7 +641,7 @@
     if(done) parsedQuestions.push(done);
 
     if(parsedQuestions.length === 0) {
-      alert('Could not parse questions. Ensure they are numbered (1.) with options (A.) and a symbol like ✅ on the correct answer.');
+      alert('Could not parse questions.');
       return;
     }
 
@@ -682,229 +673,6 @@
     render();
   }
 
-  function addFlashcard() {
-    if (!newFlashcardTopic.trim() || !newFlashcardFront.trim() || !newFlashcardBack.trim()) {
-      alert('Please fill in the topic name, question, and answer fields!');
-      return;
-    }
-
-    if (!db.flashcards) db.flashcards = [];
-    
-    db.flashcards.push({
-      id: Date.now().toString(),
-      topicName: newFlashcardTopic.trim(),
-      front: newFlashcardFront.trim(),
-      back: newFlashcardBack.trim()
-    });
-
-    newFlashcardFront = '';
-    newFlashcardBack = '';
-    saveData();
-    alert('✅ Flashcard added successfully!');
-    render();
-  }
-
-  function deleteFlashcard(cardId) {
-    if(confirm('Delete this flashcard?')) {
-      db.flashcards = db.flashcards.filter(c => c.id !== cardId);
-      saveData();
-      render();
-    }
-  }
-
-  function render() {
-    const app = document.getElementById('app');
-    app.innerHTML = '';
-
-    if (currentTab === 'flashcards') {
-      app.innerHTML = buildFlashcards();
-    } else if (currentTab === 'subjects') {
-      const currentView = viewStack[viewStack.length - 1];
-      if (currentView === 'topicList') app.innerHTML += buildTopicList();
-      if (currentView === 'topicDetail') app.innerHTML += buildTopicDetail();
-      if (currentView === 'takeQuiz') app.innerHTML += buildQuizSession();
-    }
-  }
-  function buildTopicList() {
-    let html = `<header><h1>📚 Study Hub</h1></header><div style="padding: 8px 0;">`;
-    
-    if (db.topics.length === 0) {
-      html += `
-        <div class="card">
-          <div class="empty-state">
-            <div class="empty-state-icon">📖</div>
-            <p><strong>No topics yet</strong></p>
-            <p style="font-size: 0.9rem; margin-top: 8px;">Create your first topic to get started!</p>
-          </div>
-        </div>
-      `;
-    } else {
-      db.topics.forEach(top => {
-        const isMenuOpen = openMenuTopicId === top.id;
-        html += `
-          <div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;">
-            <div class="title-row">
-              <h3>${top.name}</h3>
-              <div class="menu-container">
-                <button class="dots-btn" onclick="toggleMenu('${top.id}', event)">⋮</button>
-                <div class="dropdown-menu ${isMenuOpen ? 'show' : ''}">
-                  <button class="dropdown-item" onclick="editTopic('${top.id}', event)">✏️ Edit</button>
-                  <button class="dropdown-item" style="color:var(--danger);" onclick="deleteTopic('${top.id}', event)">🗑️ Delete</button>
-                </div>
-              </div>
-            </div>
-            <div style="display: flex; gap: 12px; margin-top: 12px;">
-              <span class="badge">${top.quiz.length} Quiz Question${top.quiz.length !== 1 ? 's' : ''}</span>
-            </div>
-          </div>
-        `;
-      });
-    }
-    
-    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">✨ Create Quiz Topic</button></div></div>`;
-    return html;
-  }
-
-  function buildTopicDetail() {
-    const topic = db.topics.find(t => t.id === activeTopicId);
-    
-    let html = `
-      <div style="padding: 0 4px;">
-        <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
-          <button class="back-btn" onclick="goBack()">← Back to Topics</button>
-          <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">${topic.name}</span>
-        </div>
-      </div>
-    `;
-    
-    html += `
-      <div class="sub-nav">
-        <button class="sub-nav-btn ${quizMode === 'play' ? 'active' : ''}" onclick="setQuizMode('play')">🎯 Take Quiz</button>
-        <button class="sub-nav-btn ${quizMode === 'manage' ? 'active' : ''}" onclick="setQuizMode('manage')">⚙️ Edit Quiz</button>
-      </div>
-    `;
-
-    if (quizMode === 'play') {
-      html += `<div class="card highlight-card">`;
-      if (topic.quiz.length > 0) {
-        html += `
-          <h3 style="margin-bottom:8px;">🎯 Ready to Practice?</h3>
-          <p style="margin:0 0 12px 0; font-size:0.95rem;">Take the quiz (${topic.quiz.length} question${topic.quiz.length !== 1 ? 's' : ''}).</p>
-          <button class="btn btn-primary" style="font-weight: 700; margin-bottom: 8px;" onclick="startQuizSession()">Start Quiz →</button>
-        `;
-      } else {
-        html += `
-          <h3 style="margin-bottom:8px;">📝 No Questions Yet</h3>
-          <p style="margin:0 0 12px 0; font-size:0.95rem;">Switch to 'Edit Quiz' to add new questions to this topic.</p>
-          <button class="btn" style="background:#fff; color:var(--bg-primary);" onclick="setQuizMode('manage')">Go to Edit Mode</button>
-        `;
-      }
-      html += `</div>`;
-    } else {
-      html += `
-        <div class="card">
-          <h3>📝 Import Quiz Questions</h3>
-          <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Paste AI-generated questions with numbered format and mark correct answers with ✅</p>
-          <textarea rows="6" placeholder="1. What is 2 + 2?\nA. 3\nB. 4 ✅\nC. 5\nD. 6" oninput="bulkPasteText=this.value" style="font-size: 0.9rem;">${bulkPasteText}</textarea>
-          <button class="btn btn-success" onclick="parseAndImportQuestions('${topic.id}')">Import Questions</button>
-        </div>
-      `;
-      
-      html += `<div class="card"><h3>📋 Quiz Questions (${topic.quiz.length})</h3>`;
-      if (topic.quiz.length > 0) {
-        topic.quiz.forEach((q, idx) => {
-          html += `
-            <div style="background:var(--bg-primary); border:1px solid var(--border); padding:16px; border-radius:12px; margin: 12px 0;">
-              <div style="display:flex; justify-content:space-between; align-items:start; gap: 12px;">
-                <div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 6px;">QUESTION ${idx + 1}</div>
-                  <strong style="line-height: 1.5;">${q.question}</strong>
-                </div>
-                <button class="btn btn-danger" style="width:auto; padding:8px 12px; margin:0; font-size:0.85rem; flex-shrink: 0;" onclick="deleteQuestion(${idx})">Delete</button>
-              </div>
-              <ul style="margin:12px 0 0 0; padding:0 0 0 20px; font-size:0.9rem; color:var(--text-secondary); line-height: 1.8;">
-                ${q.options.map((opt, oIdx) => `<li style="color:${oIdx === q.correctIndex ? 'var(--success)' : 'inherit'}; font-weight: ${oIdx === q.correctIndex ? '600' : '400'};">${opt}${oIdx === q.correctIndex ? '✓' : ''}</li>`).join('')}
-              </ul>
-            </div>
-          `;
-        });
-      } else {
-        html += `
-          <div class="empty-state" style="padding: 20px;">
-            <div class="empty-state-icon" style="font-size: 3rem;">📝</div>
-            <p>No questions yet. Paste and import above!</p>
-          </div>
-        `;
-      }
-      html += `</div>`;
-    }
-    
-    return html;
-  }
-
-  function buildQuizSession() {
-    const topic = db.topics.find(t => t.id === activeTopicId);
-    
-    if (quizIndex >= topic.quiz.length) {
-      const percentage = Math.round((quizScore / topic.quiz.length) * 100);
-      const isPerfect = percentage === 100;
-      const isGood = percentage >= 70;
-      
-      return `
-        <div style="padding: 0 4px;">
-          <div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="goBack()">← Back to Topic</button></div>
-          <div class="card" style="text-align:center;">
-            <div style="font-size: 4rem; margin-bottom: 16px;">${isPerfect ? '🏆' : isGood ? '🎉' : '📚'}</div>
-            <h2 style="margin-bottom: 12px;">${isPerfect ? 'Perfect Score!' : isGood ? 'Great Job!' : 'Keep Practicing!'}</h2>
-            <p style="font-size: 2rem; font-weight:700; color:var(--accent-secondary); margin: 20px 0;">
-              ${quizScore} / ${topic.quiz.length}
-            </p>
-            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 24px;">${percentage}% Correct</p>
-            <button class="btn btn-primary" onclick="startQuizSession()">Retake Quiz</button>
-            <button class="btn" style="margin-top:12px;" onclick="goBack()">Back to Topic</button>
-          </div>
-        </div>
-      `;
-    }
-    
-    const q = topic.quiz[quizIndex];
-    const progress = ((quizIndex) / topic.quiz.length) * 100;
-    
-    let html = `
-      <div style="padding: 0 4px;">
-        <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
-          <button class="back-btn" onclick="goBack()">← Quit Quiz</button>
-          <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">Question ${quizIndex + 1} of ${topic.quiz.length}</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${progress}%;"></div>
-        </div>
-        <div class="card" style="margin-top: 16px;">
-          <div style="margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px;">QUESTION ${quizIndex + 1}</div>
-          <h3 style="margin-bottom:20px; font-size:1.15rem; line-height:1.6; font-weight: 600;">${q.question}</h3>
-    `;
-    
-    q.options.forEach((opt, idx) => {
-      let optClass = 'quiz-option';
-      if (quizAnswered) {
-        if (idx === q.correctIndex) optClass += ' correct';
-        else if (idx === quizSelectedOpt) optClass += ' incorrect';
-      } else if (quizSelectedOpt === idx) {
-        optClass += ' selected';
-      }
-      html += `<div class="${optClass}" onclick="${quizAnswered ? '' : `quizSelectedOpt=${idx}; render();`}">${String.fromCharCode(65 + idx)}. ${opt}</div>`;
-    });
-    
-    if (!quizAnswered) {
-      html += `<button class="btn btn-primary" style="margin-top:20px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.4; cursor: not-allowed;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
-    } else {
-      html += `<button class="btn btn-primary" style="margin-top:20px;" onclick="nextQuizQuestion()">Next Question →</button>`;
-    }
-    
-    html += `</div></div>`;
-    return html;
-  }
-
   function submitQuizAnswer() {
     if (quizSelectedOpt === null) return;
     const topic = db.topics.find(t => t.id === activeTopicId);
@@ -920,72 +688,139 @@
     render();
   }
 
+  function buildTopicList() {
+    let html = `<header><h1>📚 Study Hub</h1></header><div style="padding: 8px 0;">`;
+    if (db.topics.length === 0) {
+      html += `<div class="card"><div class="empty-state"><div class="empty-state-icon">📖</div><p><strong>No topics yet</strong></p><p style="font-size: 0.9rem; margin-top: 8px;">Create your first topic to get started!</p></div></div>`;
+    } else {
+      db.topics.forEach(top => {
+        const isMenuOpen = openMenuTopicId === top.id;
+        html += `<div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;"><div class="title-row"><h3>${top.name}</h3><div class="menu-container"><button class="dots-btn" onclick="toggleMenu('${top.id}', event)">⋮</button><div class="dropdown-menu ${isMenuOpen ? 'show' : ''}"><button class="dropdown-item" onclick="editTopic('${top.id}', event)">✏️ Edit</button><button class="dropdown-item" style="color:var(--danger);" onclick="deleteTopic('${top.id}', event)">🗑️ Delete</button></div></div></div><div style="display: flex; gap: 12px; margin-top: 12px;"><span class="badge">${top.quiz.length} Quiz Question${top.quiz.length !== 1 ? 's' : ''}</span></div></div>`;
+      });
+    }
+    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">✨ Create Quiz Topic</button></div></div>`;
+    return html;
+  }
+
+  function buildTopicDetail() {
+    const topic = db.topics.find(t => t.id === activeTopicId);
+    let html = `<div style="padding: 0 4px;"><div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;"><button class="back-btn" onclick="goBack()">← Back to Topics</button><span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">${topic.name}</span></div></div>`;
+    html += `<div class="sub-nav"><button class="sub-nav-btn ${quizMode === 'play' ? 'active' : ''}" onclick="setQuizMode('play')">🎯 Take Quiz</button><button class="sub-nav-btn ${quizMode === 'manage' ? 'active' : ''}" onclick="setQuizMode('manage')">⚙️ Edit Quiz</button></div>`;
+    if (quizMode === 'play') {
+      html += `<div class="card highlight-card">`;
+      if (topic.quiz.length > 0) {
+        html += `<h3 style="margin-bottom:8px;">🎯 Ready to Practice?</h3><p style="margin:0 0 12px 0; font-size:0.95rem;">Take the quiz (${topic.quiz.length} question${topic.quiz.length !== 1 ? 's' : ''}).</p><button class="btn btn-primary" style="font-weight: 700; margin-bottom: 8px;" onclick="startQuizSession()">Start Quiz →</button>`;
+      } else {
+        html += `<h3 style="margin-bottom:8px;">📝 No Questions Yet</h3><p style="margin:0 0 12px 0; font-size:0.95rem;">Switch to 'Edit Quiz' to add new questions to this topic.</p><button class="btn" style="background:#fff; color:var(--bg-primary);" onclick="setQuizMode('manage')">Go to Edit Mode</button>`;
+      }
+      html += `</div>`;
+    } else {
+      html += `<div class="card"><h3>📝 Import Quiz Questions</h3><p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Paste AI-generated questions with numbered format and mark correct answers with ✅</p><textarea rows="6" placeholder="1. What is 2 + 2?\nA. 3\nB. 4 ✅\nC. 5\nD. 6" oninput="bulkPasteText=this.value" style="font-size: 0.9rem;">${bulkPasteText}</textarea><button class="btn btn-success" onclick="parseAndImportQuestions('${topic.id}')">Import Questions</button></div>`;
+      html += `<div class="card"><h3>📋 Quiz Questions (${topic.quiz.length})</h3>`;
+      if (topic.quiz.length > 0) {
+        topic.quiz.forEach((q, idx) => {
+          html += `<div style="background:var(--bg-primary); border:1px solid var(--border); padding:16px; border-radius:12px; margin: 12px 0;"><div style="display:flex; justify-content:space-between; align-items:start; gap: 12px;"><div><div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 6px;">QUESTION ${idx + 1}</div><strong style="line-height: 1.5;">${q.question}</strong></div><button class="btn btn-danger" style="width:auto; padding:8px 12px; margin:0; font-size:0.85rem; flex-shrink: 0;" onclick="deleteQuestion(${idx})">Delete</button></div><ul style="margin:12px 0 0 0; padding:0 0 0 20px; font-size:0.9rem; color:var(--text-secondary); line-height: 1.8;">${q.options.map((opt, oIdx) => `<li style="color:${oIdx === q.correctIndex ? 'var(--success)' : 'inherit'}; font-weight: ${oIdx === q.correctIndex ? '600' : '400'};">${opt}${oIdx === q.correctIndex ? '✓' : ''}</li>`).join('')}</ul></div>`;
+        });
+      } else {
+        html += `<div class="empty-state" style="padding: 20px;"><div class="empty-state-icon" style="font-size: 3rem;">📝</div><p>No questions yet. Paste and import above!</p></div>`;
+      }
+      html += `</div>`;
+    }
+    return html;
+  }
+  function buildQuizSession() {
+    const topic = db.topics.find(t => t.id === activeTopicId);
+    if (quizIndex >= topic.quiz.length) {
+      const percentage = Math.round((quizScore / topic.quiz.length) * 100);
+      const isPerfect = percentage === 100;
+      const isGood = percentage >= 70;
+      return `<div style="padding: 0 4px;"><div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="goBack()">← Back to Topic</button></div><div class="card" style="text-align:center;"><div style="font-size: 4rem; margin-bottom: 16px;">${isPerfect ? '🏆' : isGood ? '🎉' : '📚'}</div><h2 style="margin-bottom: 12px;">${isPerfect ? 'Perfect Score!' : isGood ? 'Great Job!' : 'Keep Practicing!'}</h2><p style="font-size: 2rem; font-weight:700; color:var(--accent-secondary); margin: 20px 0;">${quizScore} / ${topic.quiz.length}</p><p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 24px;">${percentage}% Correct</p><button class="btn btn-primary" onclick="startQuizSession()">Retake Quiz</button><button class="btn" style="margin-top:12px;" onclick="goBack()">Back to Topic</button></div></div>`;
+    }
+    const q = topic.quiz[quizIndex];
+    const progress = ((quizIndex) / topic.quiz.length) * 100;
+    let html = `<div style="padding: 0 4px;"><div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;"><button class="back-btn" onclick="goBack()">← Quit Quiz</button><span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">Question ${quizIndex + 1} of ${topic.quiz.length}</span></div><div class="progress-bar"><div class="progress-fill" style="width: ${progress}%;"></div></div><div class="card" style="margin-top: 16px;"><div style="margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px;">QUESTION ${quizIndex + 1}</div><h3 style="margin-bottom:20px; font-size:1.15rem; line-height:1.6; font-weight: 600;">${q.question}</h3>`;
+    q.options.forEach((opt, idx) => {
+      let optClass = 'quiz-option';
+      if (quizAnswered) {
+        if (idx === q.correctIndex) optClass += ' correct';
+        else if (idx === quizSelectedOpt) optClass += ' incorrect';
+      } else if (quizSelectedOpt === idx) { optClass += ' selected'; }
+      html += `<div class="${optClass}" onclick="${quizAnswered ? '' : `quizSelectedOpt=${idx}; render();`}">${String.fromCharCode(65 + idx)}. ${opt}</div>`;
+    });
+    if (!quizAnswered) {
+      html += `<button class="btn btn-primary" style="margin-top:20px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.4; cursor: not-allowed;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
+    } else {
+      html += `<button class="btn btn-primary" style="margin-top:20px;" onclick="nextQuizQuestion()">Next Question →</button>`;
+    }
+    return html + `</div></div>`;
+  }
+
+  // --- FLASHCARD LOGIC ---
+
+  function selectFlashcardTopic(tName) {
+    selectedFlashcardTopic = tName;
+    flashcardIndex = 0;
+    isFlipped = false;
+    render();
+  }
+
   function buildFlashcards() {
     let html = `<header><h1>🎴 Flashcards</h1></header>`;
+    html += `<div class="sub-nav"><button class="sub-nav-btn ${fcMode === 'study' ? 'active' : ''}" onclick="setFcMode('study')">📖 Study</button><button class="sub-nav-btn ${fcMode === 'manage' ? 'active' : ''}" onclick="setFcMode('manage')">⚙️ Add / Manage</button></div>`;
 
-    html += `
-      <div class="sub-nav">
-        <button class="sub-nav-btn ${fcMode === 'study' ? 'active' : ''}" onclick="setFcMode('study')">📖 Study</button>
-        <button class="sub-nav-btn ${fcMode === 'manage' ? 'active' : ''}" onclick="setFcMode('manage')">⚙️ Add / Manage</button>
-      </div>
-    `;
-
-    if (fcMode === 'manage') {
-      return html + buildManageFlashcards();
-    }
+    if (fcMode === 'manage') return html + buildManageFlashcards();
 
     const allFlashcards = db.flashcards || [];
 
     if(allFlashcards.length === 0) {
-      html += `
-        <div class="card">
-          <div class="empty-state">
-            <div class="empty-state-icon">🎴</div>
-            <p><strong>No flashcards yet</strong></p>
-            <p style="font-size: 0.9rem; margin-top: 8px;">Switch to the 'Add / Manage' tab to create your first flashcard!</p>
+      return html + `<div class="card"><div class="empty-state"><div class="empty-state-icon">🎴</div><p><strong>No flashcards yet</strong></p><p style="font-size: 0.9rem; margin-top: 8px;">Switch to the 'Add / Manage' tab to create your first flashcard!</p></div></div>`;
+    }
+
+    if (!selectedFlashcardTopic) {
+      const topicCounts = {};
+      allFlashcards.forEach(card => {
+        topicCounts[card.topicName] = (topicCounts[card.topicName] || 0) + 1;
+      });
+
+      html += `<div style="padding: 0 16px; margin-top: 12px;"><h3 style="margin-bottom: 16px; font-size: 1.1rem;">Select a Topic to Study</h3></div>`;
+
+      for (const [tName, count] of Object.entries(topicCounts)) {
+        html += `
+          <div class="card" onclick="selectFlashcardTopic('${tName}')" style="cursor:pointer; margin-bottom: 12px;">
+            <div class="title-row" style="margin-bottom: 0;">
+              <h3 style="color: var(--accent-secondary);">${tName}</h3>
+              <span class="badge">${count} Card${count !== 1 ? 's' : ''}</span>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
       return html;
     }
 
-    if(flashcardIndex >= allFlashcards.length) flashcardIndex = 0;
-
-    const currentCard = allFlashcards[flashcardIndex];
-    const progress = ((flashcardIndex + 1) / allFlashcards.length) * 100;
+    const topicCards = allFlashcards.filter(c => c.topicName === selectedFlashcardTopic);
+    if(flashcardIndex >= topicCards.length) flashcardIndex = 0;
+    
+    const currentCard = topicCards[flashcardIndex];
+    const progress = ((flashcardIndex + 1) / topicCards.length) * 100;
 
     html += `
-      <div style="margin: 16px; text-align: center;">
-        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
-          Card ${flashcardIndex + 1} of ${allFlashcards.length}
-        </span>
-        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-          Topic: ${currentCard.topicName}
-        </div>
+      <div style="padding: 0 4px;"><div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="selectedFlashcardTopic = null; render();">← Back to Topics</button></div></div>
+      <div style="margin: 0 16px 16px 16px; text-align: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Card ${flashcardIndex + 1} of ${topicCards.length}</span>
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Topic: ${currentCard.topicName}</div>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: ${progress}%;"></div>
-      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: ${progress}%;"></div></div>
       <div class="flashcard-container">
         <div class="flashcard ${isFlipped ? 'flipped' : ''}" id="flashcard" onclick="flipCard()">
-          <div class="flashcard-face flashcard-front">
-            <div class="flashcard-label">Question</div>
-            <div class="flashcard-content">${currentCard.front}</div>
-            <div class="flashcard-hint">Tap to reveal answer</div>
-          </div>
-          <div class="flashcard-face flashcard-back">
-            <div class="flashcard-label">Answer</div>
-            <div class="flashcard-content">${currentCard.back}</div>
-            <div class="flashcard-hint">Tap to flip back</div>
-          </div>
+          <div class="flashcard-face flashcard-front"><div class="flashcard-label">Question</div><div class="flashcard-content">${currentCard.front}</div><div class="flashcard-hint">Tap to reveal answer</div></div>
+          <div class="flashcard-face flashcard-back"><div class="flashcard-label">Answer</div><div class="flashcard-content">${currentCard.back}</div><div class="flashcard-hint">Tap to flip back</div></div>
         </div>
       </div>
       <div class="flashcard-controls">
         <button class="btn" onclick="prevCard()" ${flashcardIndex === 0 ? 'disabled style="opacity:0.4;"' : ''}>← Previous</button>
-        <button class="btn btn-primary" onclick="nextCard()" ${flashcardIndex >= allFlashcards.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>Next →</button>
+        <button class="btn btn-primary" onclick="nextCard()" ${flashcardIndex >= topicCards.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>Next →</button>
       </div>
     `;
-
     return html;
   }
 
@@ -994,16 +829,12 @@
       <div class="card highlight-card">
         <h3>✨ Create Flashcard</h3>
         <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Add a new flashcard and specify its topic name.</p>
-        
         <label class="form-label">Topic Name</label>
-        <input type="text" placeholder="e.g., Math, Science, History" oninput="newFlashcardTopic=this.value" value="${newFlashcardTopic}" style="font-size: 0.95rem;">
-
+        <input type="text" placeholder="e.g., Math, Science" oninput="newFlashcardTopic=this.value" value="${newFlashcardTopic}" style="font-size: 0.95rem;">
         <label class="form-label">Front (Question)</label>
         <textarea rows="2" placeholder="e.g., What is the capital of France?" oninput="newFlashcardFront=this.value" style="font-size: 0.95rem;">${newFlashcardFront}</textarea>
-        
         <label class="form-label">Back (Answer/Explanation)</label>
-        <textarea rows="3" placeholder="e.g., Paris is the capital and most populous city..." oninput="newFlashcardBack=this.value" style="font-size: 0.95rem;">${newFlashcardBack}</textarea>
-        
+        <textarea rows="3" placeholder="e.g., Paris is the capital..." oninput="newFlashcardBack=this.value" style="font-size: 0.95rem;">${newFlashcardBack}</textarea>
         <button class="btn btn-primary" onclick="addFlashcard()">Add Flashcard</button>
       </div>
     `;
@@ -1011,8 +842,7 @@
     const allFlashcards = db.flashcards || [];
     let totalCards = allFlashcards.length;
 
-    html += `<div class="card">
-      <h3>📚 All Flashcards (${totalCards})</h3>`;
+    html += `<div class="card"><h3>📚 All Flashcards (${totalCards})</h3>`;
     
     if (totalCards > 0) {
       const groupedCards = {};
@@ -1024,32 +854,36 @@
       for (const [topicName, cards] of Object.entries(groupedCards)) {
         html += `<div style="margin-top: 16px; margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: var(--accent-secondary); text-transform: uppercase;">${topicName}</div>`;
         cards.forEach((card, idx) => {
-          html += `
-            <div class="flashcard-item">
-              <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px;">
-                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">CARD ${idx + 1}</div>
-                <button class="btn btn-danger" style="width:auto; padding:6px 12px; margin:0; font-size:0.85rem;" onclick="deleteFlashcard('${card.id}')">Delete</button>
-              </div>
-              <div class="flashcard-item-front">
-                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Q:</span> ${card.front}
-              </div>
-              <div class="flashcard-item-back">
-                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">A:</span> ${card.back}
-              </div>
-            </div>
-          `;
+          html += `<div class="flashcard-item"><div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px;"><div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">CARD ${idx + 1}</div><button class="btn btn-danger" style="width:auto; padding:6px 12px; margin:0; font-size:0.85rem;" onclick="deleteFlashcard('${card.id}')">Delete</button></div><div class="flashcard-item-front"><span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Q:</span> ${card.front}</div><div class="flashcard-item-back"><span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">A:</span> ${card.back}</div></div>`;
         });
       }
     } else {
-      html += `
-        <div class="empty-state" style="padding: 20px;">
-          <p>No flashcards created yet.</p>
-        </div>
-      `;
+      html += `<div class="empty-state" style="padding: 20px;"><p>No flashcards created yet.</p></div>`;
     }
     html += `</div>`;
-    
     return html;
+  }
+
+  function addFlashcard() {
+    if (!newFlashcardTopic.trim() || !newFlashcardFront.trim() || !newFlashcardBack.trim()) {
+      alert('Please fill in the topic name, question, and answer fields!');
+      return;
+    }
+    if (!db.flashcards) db.flashcards = [];
+    db.flashcards.push({ id: Date.now().toString(), topicName: newFlashcardTopic.trim(), front: newFlashcardFront.trim(), back: newFlashcardBack.trim() });
+    newFlashcardFront = '';
+    newFlashcardBack = '';
+    saveData();
+    alert('✅ Flashcard added successfully!');
+    render();
+  }
+
+  function deleteFlashcard(cardId) {
+    if(confirm('Delete this flashcard?')) {
+      db.flashcards = db.flashcards.filter(c => c.id !== cardId);
+      saveData();
+      render();
+    }
   }
 
   function flipCard() {
@@ -1058,8 +892,8 @@
   }
 
   function nextCard() {
-    const allFlashcards = db.flashcards || [];
-    if(flashcardIndex < allFlashcards.length - 1) {
+    const topicCards = (db.flashcards || []).filter(c => c.topicName === selectedFlashcardTopic);
+    if(flashcardIndex < topicCards.length - 1) {
       flashcardIndex++;
       isFlipped = false;
       render();
@@ -1071,6 +905,19 @@
       flashcardIndex--;
       isFlipped = false;
       render();
+    }
+  }
+
+  function render() {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    if (currentTab === 'flashcards') {
+      app.innerHTML = buildFlashcards();
+    } else if (currentTab === 'subjects') {
+      const currentView = viewStack[viewStack.length - 1];
+      if (currentView === 'topicList') app.innerHTML += buildTopicList();
+      if (currentView === 'topicDetail') app.innerHTML += buildTopicDetail();
+      if (currentView === 'takeQuiz') app.innerHTML += buildQuizSession();
     }
   }
 
