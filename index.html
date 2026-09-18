@@ -3,124 +3,487 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Offline Study App</title>
+<title>Study Hub</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#0a0e17">
 <style>
   :root {
-    --bg-color: #0b0d12;
-    --card-color: #131720;
-    --text-main: #f2f4f8;
-    --text-muted: #9aa4b5;
-    --accent: #8b7cff;
-    --thick-outline: #242936;
-    --danger: #ff6577;
-    --green: #4fd18b;
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827; /* Charcoal */
+    --bg-card: #1e293b; /* Deep Slate */
+    --text-primary: #e8edf4;
+    --text-secondary: #9ba3b4;
+    --text-muted: #6b7280;
+    --accent-primary: #7c3aed;
+    --accent-secondary: #a78bfa;
+    --accent-glow: rgba(124, 58, 237, 0.3);
+    --success: #10b981;
+    --success-glow: rgba(16, 185, 129, 0.2);
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.2);
+    --border: #2d3748;
+    --border-accent: #4c5773;
+    --shadow: rgba(0, 0, 0, 0.5);
   }
   
-  * { box-sizing: border-box; font-family: sans-serif; }
+  * { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
   
   body {
-    margin: 0; padding: 0 0 80px 0;
-    background-color: var(--bg-color); color: var(--text-main);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, #0d1220 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 80px;
+    overflow-x: hidden;
   }
 
   .card {
-    background: var(--card-color); border: 3px solid var(--thick-outline);
-    border-radius: 12px; padding: 16px; margin: 12px 16px;
-    box-shadow: 4px 4px 0px var(--thick-outline); position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 12px 16px;
+    box-shadow: 0 4px 12px var(--shadow), 0 0 1px rgba(124, 58, 237, 0.1);
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--shadow), 0 0 20px rgba(124, 58, 237, 0.15);
+    border-color: var(--border-accent);
+  }
+
+  /* Sub-Navigation Tabs for Creating/Managing */
+  .sub-nav {
+    display: flex;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 6px;
+    margin: 16px;
+    border: 1px solid var(--border);
+  }
+
+  .sub-nav-btn {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sub-nav-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-secondary);
+    box-shadow: 0 2px 8px var(--shadow);
+    border: 1px solid var(--border-accent);
   }
 
   .btn {
-    display: block; width: 100%; background: var(--card-color); color: var(--text-main);
-    border: 3px solid var(--thick-outline); border-radius: 10px; padding: 10px;
-    font-weight: bold; font-size: 0.95rem; cursor: pointer; transition: 0.1s;
-    box-shadow: 3px 3px 0px var(--thick-outline); text-align: center;
+    display: block;
+    width: 100%;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
   }
-  .btn:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px transparent; }
-  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 3px 3px 0px #5a4bcf; }
-  .btn-danger { background: var(--card-color); color: var(--danger); border-color: var(--danger); box-shadow: 3px 3px 0px #b33949; }
-  .btn-success { background: var(--card-color); color: var(--green); border-color: var(--green); box-shadow: 3px 3px 0px #2f855a; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, #5b21b6 100%);
+    border: none;
+    color: #fff;
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px var(--accent-glow);
+  }
+
+  .btn-danger {
+    background: var(--bg-card);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .btn-success {
+    background: var(--bg-card);
+    color: var(--success);
+    border-color: var(--success);
+  }
 
   header {
-    padding: 18px 16px; border-bottom: 3px solid var(--thick-outline);
-    background: var(--bg-color); display: flex; justify-content: space-between; align-items: center;
-    position: sticky; top: 0; z-index: 10;
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px var(--shadow);
   }
-  header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
 
-  input, textarea {
-    width: 100%; background: var(--bg-color); color: var(--text-main);
-    border: 3px solid var(--thick-outline); border-radius: 8px;
-    padding: 12px; font-size: 1rem; outline: none; margin-bottom: 12px; resize: vertical;
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-secondary), #fff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.5px;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    outline: none;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239ba3b4%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px top 50%;
+    background-size: 12px auto;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
   }
 
   .bottom-nav {
-    position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--card-color);
-    border-top: 3px solid var(--thick-outline); padding-bottom: env(safe-area-inset-bottom); z-index: 50;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    z-index: 50;
+    box-shadow: 0 -4px 12px var(--shadow);
   }
+
   .nav-btn {
-    flex: 1; padding: 14px 4px; background: transparent; border: none; border-right: 3px solid var(--thick-outline);
-    color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
+    flex: 1;
+    padding: 12px 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    position: relative;
   }
-  .nav-btn:last-child { border-right: none; }
-  .nav-btn.active { color: var(--accent); background: rgba(139, 124, 255, 0.1); }
-  .nav-icon { font-size: 1.4rem; }
 
-  .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .title-row h3 { margin: 0; }
-  .back-btn { background: none; border: none; color: var(--accent); font-weight: bold; font-size: 1rem; cursor: pointer; padding: 0; }
+  .nav-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: var(--accent-primary);
+    border-radius: 0 0 3px 3px;
+    transition: width 0.3s ease;
+  }
 
-  /* FlipaClip Style Scratchpad UI */
-  .scratch-toolbar {
-    display: flex; gap: 8px; padding: 8px 16px; background: var(--card-color);
-    border-bottom: 3px solid var(--thick-outline); align-items: center; overflow-x: auto;
-  }
-  .tool-btn {
-    background: var(--bg-color); border: 2px solid var(--thick-outline); color: var(--text-main);
-    padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer;
-    box-shadow: 2px 2px 0px var(--thick-outline); white-space: nowrap; flex-shrink: 0;
-  }
-  .tool-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  
-  .canvas-wrapper {
-    position: relative; width: 100%; height: 60vh; background: #ffffff;
-    border-bottom: 3px solid var(--thick-outline); overflow: hidden; touch-action: none;
-  }
-  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .nav-btn.active { color: var(--accent-secondary); }
+  .nav-btn.active::before { width: 60%; }
+  .nav-icon { font-size: 1.6rem; transition: transform 0.2s ease; }
+  .nav-btn:active .nav-icon { transform: scale(0.9); }
 
-  .canvas-controls {
-    display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card-color);
-    border-bottom: 3px solid var(--thick-outline);
+  .title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
   }
-  .slider-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: bold; color: var(--text-muted); width: 60%; }
-  .slider-group input { flex: 1; margin: 0; accent-color: var(--accent); }
 
-  /* Topic & Quiz Styles */
+  .title-row h3 { font-size: 1.15rem; font-weight: 600; }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--accent-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 8px 0;
+  }
+
   .quiz-option {
-    background: var(--bg-color); border: 2px solid var(--thick-outline);
-    padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
-    font-weight: bold; box-shadow: 2px 2px 0px var(--thick-outline);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
   }
-  .quiz-option.selected { border-color: var(--accent); background: rgba(139, 124, 255, 0.15); }
-  .quiz-option.correct { border-color: var(--green); background: rgba(79, 209, 139, 0.2); color: var(--green); }
-  .quiz-option.incorrect { border-color: var(--danger); background: rgba(255, 101, 119, 0.2); color: var(--danger); }
+
+  .quiz-option:hover {
+    border-color: var(--border-accent);
+    transform: translateX(4px);
+  }
+
+  .quiz-option.selected {
+    border-color: var(--accent-primary);
+    background: var(--accent-glow);
+  }
+
+  .quiz-option.correct {
+    border-color: var(--success);
+    background: var(--success-glow);
+    color: var(--success);
+  }
+
+  .quiz-option.incorrect {
+    border-color: var(--danger);
+    background: var(--danger-glow);
+    color: var(--danger);
+  }
 
   .menu-container { position: relative; display: inline-block; }
-  .dots-btn { background: none; border: none; color: var(--text-main); font-size: 1.4rem; font-weight: bold; cursor: pointer; padding: 0 6px; }
+  
+  .dots-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 8px;
+  }
+
   .dropdown-menu {
-    position: absolute; right: 0; top: 30px; background: var(--card-color);
-    border: 3px solid var(--thick-outline); border-radius: 8px; z-index: 20;
-    box-shadow: 3px 3px 0px var(--thick-outline); display: none; min-width: 110px;
+    position: absolute;
+    right: 0;
+    top: 35px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    z-index: 20;
+    box-shadow: 0 8px 24px var(--shadow);
+    display: none;
+    min-width: 120px;
   }
-  .dropdown-menu.show { display: block; }
+
+  .dropdown-menu.show {
+    display: block;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .dropdown-item {
-    padding: 10px 14px; font-size: 0.9rem; font-weight: bold; cursor: pointer;
-    border-bottom: 2px solid var(--thick-outline); text-align: left; background: none; color: var(--text-main); width: 100%;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    background: none;
+    color: var(--text-primary);
+    width: 100%;
+    text-align: left;
   }
-  .dropdown-item:last-child { border-bottom: none; }
-  #import-file { display: none; }
+
+  .dropdown-item:hover { background: var(--bg-secondary); }
+
+  /* Improved Flashcard Styles */
+  .flashcard-container {
+    perspective: 1200px;
+    margin: 20px 16px;
+  }
+
+  .flashcard {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+    /* Smooth, bouncy flip animation */
+    transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+    cursor: pointer;
+  }
+
+  .flashcard.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .flashcard-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    min-height: 320px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 20px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 12px 32px var(--shadow);
+  }
+
+  /* Distinct Front Design (Deep Slate) */
+  .flashcard-front {
+    background: var(--bg-card);
+    border: 2px solid var(--accent-primary);
+  }
+
+  /* Distinct Back Design (Charcoal) */
+  .flashcard-back {
+    background: var(--bg-secondary);
+    border: 2px solid var(--success);
+    transform: rotateY(180deg);
+  }
+
+  .flashcard-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-secondary);
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+  
+  .flashcard-back .flashcard-label {
+    color: var(--success);
+  }
+
+  .flashcard-content {
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1.6;
+    color: #fff;
+  }
+
+  .flashcard-hint {
+    margin-top: 24px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .flashcard-controls {
+    display: flex;
+    gap: 12px;
+    margin: 20px 16px;
+  }
+
+  .flashcard-controls .btn { flex: 1; }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 16px 16px 0 16px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    transition: width 0.3s ease;
+    border-radius: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--accent-glow);
+    color: var(--accent-secondary);
+    border: 1px solid var(--accent-primary);
+  }
+
+  .highlight-card {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+    border: 1px solid var(--accent-primary);
+  }
+
+  .flashcard-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .flashcard-item-front {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .flashcard-item-back {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 </style>
 </head>
 <body>
@@ -128,16 +491,14 @@
 <div id="app"></div>
 
 <div class="bottom-nav">
-  <button class="nav-btn" id="nav-scratch" onclick="setTab('scratchpad')">
-    <span class="nav-icon">✏️</span><span>Draw</span>
+  <button class="nav-btn active" id="nav-topics" onclick="setTab('subjects')">
+    <span class="nav-icon">📚</span><span>Topics</span>
   </button>
-  <button class="nav-btn active" id="nav-sub" onclick="setTab('subjects')">
-    <span class="nav-icon">📓</span><span>Topics</span>
-  </button>
-  <button class="nav-btn" id="nav-set" onclick="setTab('settings')">
-    <span class="nav-icon">⚙️</span><span>Settings</span>
+  <button class="nav-btn" id="nav-flash" onclick="setTab('flashcards')">
+    <span class="nav-icon">🎴</span><span>Cards</span>
   </button>
 </div>
+
 <script>
   let currentTab = 'subjects';
   let viewStack = ['topicList'];
@@ -150,41 +511,55 @@
   let quizScore = 0;
   let quizAnswered = false;
 
-  let scratchSavedData = null;
-  let undoStack = [];
-  let redoStack = [];
-  let currentTool = 'pen';
-  let brushSize = 4;
-  let isDrawing = false;
-  let canvas, ctx;
-  let scale = 1, panX = 0, panY = 0;
-  let startX = 0, startY = 0;
-  let initialPinchDist = null;
+  let flashcardIndex = 0;
+  let isFlipped = false;
+  
+  // UI Sub-tab states
+  let fcMode = 'study'; // 'study' or 'manage'
+  let quizMode = 'play'; // 'play' or 'manage'
 
-  let db = JSON.parse(localStorage.getItem('study_app_data_v4')) || { topics: [] };
+  // Flashcard creation state
+  let newFlashcardFront = '';
+  let newFlashcardBack = '';
+  let newFlashcardTopicId = '';
+
+  let db = JSON.parse(localStorage.getItem('study_app_data_v5')) || { topics: [] };
 
   function saveData() {
-    localStorage.setItem('study_app_data_v4', JSON.stringify(db));
+    localStorage.setItem('study_app_data_v5', JSON.stringify(db));
   }
 
   function setTab(tab) {
-    if (currentTab === 'scratchpad' && canvas) {
-      scratchSavedData = canvas.toDataURL();
-    }
     currentTab = tab;
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    if(tab === 'scratchpad') document.getElementById('nav-scratch').classList.add('active');
+    
     if(tab === 'subjects') {
-      document.getElementById('nav-sub').classList.add('active');
+      document.getElementById('nav-topics').classList.add('active');
       viewStack = ['topicList'];
     }
-    if(tab === 'settings') document.getElementById('nav-set').classList.add('active');
+    if(tab === 'flashcards') {
+      document.getElementById('nav-flash').classList.add('active');
+      flashcardIndex = 0;
+      isFlipped = false;
+      fcMode = 'study';
+    }
+    render();
+  }
+
+  function setFcMode(mode) {
+    fcMode = mode;
+    render();
+  }
+
+  function setQuizMode(mode) {
+    quizMode = mode;
     render();
   }
 
   function goBack() {
     if (viewStack.length > 1) {
       viewStack.pop();
+      quizMode = 'play';
       render();
     }
   }
@@ -192,7 +567,12 @@
   function addTopic() {
     const name = prompt('Enter new topic name:');
     if (name && name.trim() !== '') {
-      const newTopic = { id: Date.now().toString(), name: name.trim(), quiz: [] };
+      const newTopic = { 
+        id: Date.now().toString(), 
+        name: name.trim(), 
+        quiz: [],
+        flashcards: []
+      };
       db.topics.push(newTopic);
       activeTopicId = newTopic.id;
       viewStack.push('topicDetail');
@@ -218,7 +598,7 @@
   function deleteTopic(topicId, event) {
     event.stopPropagation();
     openMenuTopicId = null;
-    if (confirm('Delete this topic?')) {
+    if (confirm('Delete this topic and all its content?')) {
       db.topics = db.topics.filter(t => t.id !== topicId);
       saveData();
       render();
@@ -226,17 +606,8 @@
   }
 
   function handleTopicClick(topicId) {
-    const topic = db.topics.find(t => t.id === topicId);
     activeTopicId = topicId;
-    if (topic.quiz.length === 0) {
-      viewStack.push('topicDetail');
-    } else {
-      quizIndex = 0;
-      quizScore = 0;
-      quizSelectedOpt = null;
-      quizAnswered = false;
-      viewStack.push('takeQuiz');
-    }
+    viewStack.push('topicDetail');
     render();
   }
 
@@ -285,15 +656,17 @@
     topic.quiz.push(...parsedQuestions);
     bulkPasteText = '';
     saveData();
-    alert(`Imported ${parsedQuestions.length} question(s)!`);
+    alert(`✅ Imported ${parsedQuestions.length} question(s)!`);
     render();
   }
 
   function deleteQuestion(index) {
     const topic = db.topics.find(t => t.id === activeTopicId);
-    topic.quiz.splice(index, 1);
-    saveData();
-    render();
+    if(confirm('Delete this question?')) {
+      topic.quiz.splice(index, 1);
+      saveData();
+      render();
+    }
   }
 
   function startQuizSession() {
@@ -306,16 +679,51 @@
     viewStack.push('takeQuiz');
     render();
   }
+  function addFlashcard() {
+    const topicSelect = document.getElementById('fc-topic-select');
+    const targetTopicId = topicSelect ? topicSelect.value : activeTopicId;
+
+    if (!targetTopicId) {
+      alert('Please select a topic to add this flashcard to!');
+      return;
+    }
+
+    if (!newFlashcardFront.trim() || !newFlashcardBack.trim()) {
+      alert('Please fill in both question and answer fields!');
+      return;
+    }
+
+    const topic = db.topics.find(t => t.id === targetTopicId);
+    if (!topic.flashcards) topic.flashcards = [];
+    
+    topic.flashcards.push({
+      id: Date.now().toString(),
+      front: newFlashcardFront.trim(),
+      back: newFlashcardBack.trim()
+    });
+
+    newFlashcardFront = '';
+    newFlashcardBack = '';
+    saveData();
+    alert('✅ Flashcard added successfully!');
+    render();
+  }
+
+  function deleteFlashcard(topicId, cardId) {
+    const topic = db.topics.find(t => t.id === topicId);
+    if(confirm('Delete this flashcard?')) {
+      topic.flashcards = topic.flashcards.filter(c => c.id !== cardId);
+      saveData();
+      render();
+    }
+  }
 
   function render() {
     const app = document.getElementById('app');
     app.innerHTML = '';
 
-    if (currentTab === 'scratchpad') {
-      app.innerHTML = buildScratchpad();
-      initCanvas();
-    } else if (currentTab === 'settings') {
-      app.innerHTML = buildSettings();
+    if (currentTab === 'flashcards') {
+      app.innerHTML = buildFlashcards();
     } else if (currentTab === 'subjects') {
       const currentView = viewStack[viewStack.length - 1];
       if (currentView === 'topicList') app.innerHTML += buildTopicList();
@@ -325,12 +733,22 @@
   }
 
   function buildTopicList() {
-    let html = `<header><div></div><h1>My Topics</h1><div></div></header><div style="padding: 0 4px;">`;
+    let html = `<header><h1>📚 Study Hub</h1></header><div style="padding: 8px 0;">`;
+    
     if (db.topics.length === 0) {
-      html += `<div class="card"><p style="text-align:center; color:var(--text-muted);">No topics yet. Tap below to create one!</p></div>`;
+      html += `
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-state-icon">📖</div>
+            <p><strong>No topics yet</strong></p>
+            <p style="font-size: 0.9rem; margin-top: 8px;">Create your first topic to get started!</p>
+          </div>
+        </div>
+      `;
     } else {
       db.topics.forEach(top => {
         const isMenuOpen = openMenuTopicId === top.id;
+        const flashcardCount = top.flashcards ? top.flashcards.length : 0;
         html += `
           <div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;">
             <div class="title-row">
@@ -338,95 +756,146 @@
               <div class="menu-container">
                 <button class="dots-btn" onclick="toggleMenu('${top.id}', event)">⋮</button>
                 <div class="dropdown-menu ${isMenuOpen ? 'show' : ''}">
-                  <button class="dropdown-item" onclick="editTopic('${top.id}', event)">Edit</button>
-                  <button class="dropdown-item" style="color:var(--danger);" onclick="deleteTopic('${top.id}', event)">Delete</button>
+                  <button class="dropdown-item" onclick="editTopic('${top.id}', event)">✏️ Edit</button>
+                  <button class="dropdown-item" style="color:var(--danger);" onclick="deleteTopic('${top.id}', event)">🗑️ Delete</button>
                 </div>
               </div>
             </div>
-            <div style="font-size:0.85rem; color:var(--text-muted);">${top.quiz.length} Quiz Questions</div>
+            <div style="display: flex; gap: 12px; margin-top: 12px;">
+              <span class="badge">${top.quiz.length} Quiz${top.quiz.length !== 1 ? 'zes' : ''}</span>
+              <span class="badge">${flashcardCount} Card${flashcardCount !== 1 ? 's' : ''}</span>
+            </div>
           </div>
         `;
       });
     }
-    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">+ Add Topic</button></div></div>`;
+    
+    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">✨ Create New Topic</button></div></div>`;
     return html;
   }
 
   function buildTopicDetail() {
     const topic = db.topics.find(t => t.id === activeTopicId);
+    
     let html = `
       <div style="padding: 0 4px;">
         <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
-          <button class="back-btn" onclick="goBack()">◀ BACK TO TOPICS</button>
-          <span style="font-size:0.85rem; color:var(--text-muted);">${topic.name}</span>
+          <button class="back-btn" onclick="goBack()">← Back to Topics</button>
+          <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">${topic.name}</span>
         </div>
       </div>
     `;
-    if (topic.quiz.length > 0) {
+    
+    // Sub-nav for Quiz Tab
+    html += `
+      <div class="sub-nav">
+        <button class="sub-nav-btn ${quizMode === 'play' ? 'active' : ''}" onclick="setQuizMode('play')">🎯 Take Quiz</button>
+        <button class="sub-nav-btn ${quizMode === 'manage' ? 'active' : ''}" onclick="setQuizMode('manage')">⚙️ Edit Quiz</button>
+      </div>
+    `;
+
+    if (quizMode === 'play') {
+      html += `<div class="card highlight-card">`;
+      if (topic.quiz.length > 0) {
+        html += `
+          <h3 style="margin-bottom:8px;">🎯 Ready to Practice?</h3>
+          <p style="margin:0 0 12px 0; font-size:0.95rem;">Take the quiz (${topic.quiz.length} question${topic.quiz.length !== 1 ? 's' : ''}).</p>
+          <button class="btn btn-primary" style="font-weight: 700; margin-bottom: 8px;" onclick="startQuizSession()">Start Quiz →</button>
+        `;
+      } else {
+        html += `
+          <h3 style="margin-bottom:8px;">📝 No Questions Yet</h3>
+          <p style="margin:0 0 12px 0; font-size:0.95rem;">Switch to 'Edit Quiz' to add new questions to this topic.</p>
+          <button class="btn" style="background:#fff; color:var(--bg-primary);" onclick="setQuizMode('manage')">Go to Edit Mode</button>
+        `;
+      }
+      html += `</div>`;
+    } else {
+      // Quiz Import Card
       html += `
-        <div class="card" style="background:var(--accent); border-color:#5a4bcf; color:#fff;">
-          <h3 style="margin-bottom:6px;">Ready to Practice?</h3>
-          <p style="margin:0 0 12px 0; font-size:0.9rem; opacity:0.9;">Take the interactive quiz for this topic (${topic.quiz.length} questions available).</p>
-          <button class="btn" style="background:#fff; color:var(--accent); border-color:#fff;" onclick="startQuizSession()">🚀 Take Quiz Now</button>
+        <div class="card">
+          <h3>📝 Import Quiz Questions</h3>
+          <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Paste AI-generated questions with numbered format and mark correct answers with ✅</p>
+          <textarea rows="6" placeholder="1. What is 2 + 2?\nA. 3\nB. 4 ✅\nC. 5\nD. 6" oninput="bulkPasteText=this.value" style="font-size: 0.9rem;">${bulkPasteText}</textarea>
+          <button class="btn btn-success" onclick="parseAndImportQuestions('${topic.id}')">Import Questions</button>
         </div>
       `;
-    }
-    html += `
-      <div class="card">
-        <h3>Paste AI Quiz Questions</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;">Paste questions formatted with numbered queries and options A–D. Mark the correct answer with ✅ or ✓.</p>
-        <textarea rows="6" placeholder="1. What is 2 + 2?\nA. 3\nB. 4 ✅\nC. 5\nD. 6" oninput="bulkPasteText=this.value">${bulkPasteText}</textarea>
-        <button class="btn btn-success" onclick="parseAndImportQuestions('${topic.id}')">Import Pasted Questions</button>
-      </div>
-    `;
-    html += `<div class="card"><h3>Manage Quiz Questions (${topic.quiz.length})</h3>`;
-    if (topic.quiz.length > 0) {
-      topic.quiz.forEach((q, idx) => {
-        html += `
-          <div style="background:var(--bg-color); border:2px solid var(--thick-outline); padding:10px; border-radius:8px; margin-bottom:10px;">
-            <div style="display:flex; justify-content:space-between; align-items:start;">
-              <strong>Q${idx + 1}: ${q.question}</strong>
-              <button class="btn btn-danger" style="width:auto; padding:4px 8px; margin:0; font-size:0.8rem;" onclick="deleteQuestion(${idx})">X</button>
+      
+      // Quiz Questions List
+      html += `<div class="card"><h3>📋 Quiz Questions (${topic.quiz.length})</h3>`;
+      if (topic.quiz.length > 0) {
+        topic.quiz.forEach((q, idx) => {
+          html += `
+            <div style="background:var(--bg-primary); border:1px solid var(--border); padding:16px; border-radius:12px; margin: 12px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:start; gap: 12px;">
+                <div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 6px;">QUESTION ${idx + 1}</div>
+                  <strong style="line-height: 1.5;">${q.question}</strong>
+                </div>
+                <button class="btn btn-danger" style="width:auto; padding:8px 12px; margin:0; font-size:0.85rem; flex-shrink: 0;" onclick="deleteQuestion(${idx})">Delete</button>
+              </div>
+              <ul style="margin:12px 0 0 0; padding:0 0 0 20px; font-size:0.9rem; color:var(--text-secondary); line-height: 1.8;">
+                ${q.options.map((opt, oIdx) => `<li style="color:${oIdx === q.correctIndex ? 'var(--success)' : 'inherit'}; font-weight: ${oIdx === q.correctIndex ? '600' : '400'};">${opt}${oIdx === q.correctIndex ? '✓' : ''}</li>`).join('')}
+              </ul>
             </div>
-            <ul style="margin:6px 0 0 16px; padding:0; font-size:0.9rem; color:var(--text-muted);">
-              ${q.options.map((opt, oIdx) => `<li style="color:${oIdx === q.correctIndex ? 'var(--green)' : 'inherit'};">${opt} ${oIdx === q.correctIndex ? '(Correct)' : ''}</li>`).join('')}
-            </ul>
+          `;
+        });
+      } else {
+        html += `
+          <div class="empty-state" style="padding: 20px;">
+            <div class="empty-state-icon" style="font-size: 3rem;">📝</div>
+            <p>No questions yet. Paste and import above!</p>
           </div>
         `;
-      });
-    } else {
-      html += `<p style="color:var(--text-muted); font-size:0.9rem;">No questions added yet. Paste some above!</p>`;
+      }
+      html += `</div>`;
     }
-    html += `</div>`;
+    
     return html;
   }
 
   function buildQuizSession() {
     const topic = db.topics.find(t => t.id === activeTopicId);
+    
     if (quizIndex >= topic.quiz.length) {
       const percentage = Math.round((quizScore / topic.quiz.length) * 100);
+      const isPerfect = percentage === 100;
+      const isGood = percentage >= 70;
+      
       return `
         <div style="padding: 0 4px;">
-          <div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="goBack()">◀ BACK TO TOPIC</button></div>
+          <div style="margin: 16px 16px 8px 16px;"><button class="back-btn" onclick="goBack()">← Back to Topic</button></div>
           <div class="card" style="text-align:center;">
-            <h2>Quiz Complete! 🎉</h2>
-            <p style="font-size: 1.5rem; font-weight:bold; color:var(--accent); margin: 20px 0;">Score: ${quizScore} / ${topic.quiz.length} (${percentage}%)</p>
+            <div style="font-size: 4rem; margin-bottom: 16px;">${isPerfect ? '🏆' : isGood ? '🎉' : '📚'}</div>
+            <h2 style="margin-bottom: 12px;">${isPerfect ? 'Perfect Score!' : isGood ? 'Great Job!' : 'Keep Practicing!'}</h2>
+            <p style="font-size: 2rem; font-weight:700; color:var(--accent-secondary); margin: 20px 0;">
+              ${quizScore} / ${topic.quiz.length}
+            </p>
+            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 24px;">${percentage}% Correct</p>
             <button class="btn btn-primary" onclick="startQuizSession()">Retake Quiz</button>
-            <button class="btn" style="margin-top:10px;" onclick="goBack()">Back to Topic</button>
+            <button class="btn" style="margin-top:12px;" onclick="goBack()">Back to Topic</button>
           </div>
         </div>
       `;
     }
+    
     const q = topic.quiz[quizIndex];
+    const progress = ((quizIndex) / topic.quiz.length) * 100;
+    
     let html = `
       <div style="padding: 0 4px;">
         <div style="margin: 16px 16px 8px 16px; display:flex; justify-content:space-between; align-items:center;">
-          <button class="back-btn" onclick="goBack()">◀ QUIT QUIZ</button>
-          <span style="font-size:0.85rem; color:var(--text-muted);">Question ${quizIndex + 1} of ${topic.quiz.length}</span>
+          <button class="back-btn" onclick="goBack()">← Quit Quiz</button>
+          <span style="font-size:0.85rem; color:var(--text-muted); font-weight: 600;">Question ${quizIndex + 1} of ${topic.quiz.length}</span>
         </div>
-        <div class="card">
-          <h3 style="margin-bottom:16px; font-size:1.1rem; line-height:1.4;">${q.question}</h3>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progress}%;"></div>
+        </div>
+        <div class="card" style="margin-top: 16px;">
+          <div style="margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px;">QUESTION ${quizIndex + 1}</div>
+          <h3 style="margin-bottom:20px; font-size:1.15rem; line-height:1.6; font-weight: 600;">${q.question}</h3>
     `;
+    
     q.options.forEach((opt, idx) => {
       let optClass = 'quiz-option';
       if (quizAnswered) {
@@ -437,11 +906,13 @@
       }
       html += `<div class="${optClass}" onclick="${quizAnswered ? '' : `quizSelectedOpt=${idx}; render();`}">${String.fromCharCode(65 + idx)}. ${opt}</div>`;
     });
+    
     if (!quizAnswered) {
-      html += `<button class="btn btn-primary" style="margin-top:16px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.5;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
+      html += `<button class="btn btn-primary" style="margin-top:20px;" ${quizSelectedOpt === null ? 'disabled style="opacity:0.4; cursor: not-allowed;"' : ''} onclick="submitQuizAnswer()">Submit Answer</button>`;
     } else {
-      html += `<button class="btn btn-primary" style="margin-top:16px;" onclick="nextQuizQuestion()">Next Question ➔</button>`;
+      html += `<button class="btn btn-primary" style="margin-top:20px;" onclick="nextQuizQuestion()">Next Question →</button>`;
     }
+    
     html += `</div></div>`;
     return html;
   }
@@ -455,258 +926,191 @@
   }
 
   function nextQuizQuestion() {
-    quizIndex++; quizSelectedOpt = null; quizAnswered = false;
-    render();
-  }
-</script>
-<script>
-  function buildScratchpad() {
-    return `
-      <header><div></div><h1>Scratchpad</h1><div></div></header>
-      <div class="scratch-toolbar">
-        <button class="tool-btn ${currentTool==='pen'?'active':''}" onclick="setTool('pen')">✏️ Pen</button>
-        <button class="tool-btn ${currentTool==='eraser'?'active':''}" onclick="setTool('eraser')">🧹 Eraser</button>
-        <button class="tool-btn ${currentTool==='select'?'active':''}" onclick="setTool('select')">✂️ Select</button>
-        <button class="tool-btn" onclick="undo()" title="Undo">↩️</button>
-        <button class="tool-btn" onclick="redo()" title="Redo">↪️</button>
-        <button class="tool-btn" onclick="clearCanvas()" style="color:var(--danger)">Clear</button>
-      </div>
-      <div class="canvas-controls">
-        <div class="slider-group">
-          <span>Size:</span>
-          <input type="range" min="1" max="30" value="${brushSize}" oninput="updateBrushSize(this.value)">
-        </div>
-        <span style="font-size:0.75rem; color:var(--text-muted)">Pinch to Zoom 🔍</span>
-      </div>
-      <div class="canvas-wrapper" id="canvas-wrap">
-        <canvas id="scratch-canvas"></canvas>
-      </div>
-    `;
-  }
-
-  function initCanvas() {
-    canvas = document.getElementById('scratch-canvas');
-    if(!canvas) return;
-    ctx = canvas.getContext('2d');
-    
-    canvas.width = canvas.parentElement.clientWidth * 2;
-    canvas.height = canvas.parentElement.clientHeight * 2;
-    ctx.scale(2, 2);
-
-    if (scratchSavedData) {
-      let img = new Image();
-      img.onload = function() {
-        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
-        saveState();
-      };
-      img.src = scratchSavedData;
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      saveState();
-    }
-
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
-
-    const wrapper = document.getElementById('canvas-wrap');
-    wrapper.addEventListener('touchstart', handleTouchStart, {passive: false});
-    wrapper.addEventListener('touchmove', handleTouchMove, {passive: false});
-  }
-
-  function setTool(tool) {
-    currentTool = tool;
+    quizIndex++;
+    quizSelectedOpt = null;
+    quizAnswered = false;
     render();
   }
 
-  function updateBrushSize(val) {
-    brushSize = parseInt(val);
-  }
+  function buildFlashcards() {
+    let html = `<header><h1>🎴 Flashcards</h1></header>`;
 
-  function saveState() {
-    if(!canvas) return;
-    if (undoStack.length > 20) undoStack.shift();
-    undoStack.push(canvas.toDataURL());
-    redoStack = [];
-  }
-
-  function undo() {
-    if (undoStack.length > 1) {
-      redoStack.push(undoStack.pop());
-      let imgData = undoStack[undoStack.length - 1];
-      let img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
-      };
-      img.src = imgData;
-    }
-  }
-
-  function redo() {
-    if (redoStack.length > 0) {
-      let imgData = redoStack.pop();
-      undoStack.push(imgData);
-      let img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width/2, canvas.height/2);
-      };
-      img.src = imgData;
-    }
-  }
-
-  function clearCanvas() {
-    if(confirm("Clear entire canvas?")) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      saveState();
-    }
-  }
-
-  function getCanvasPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left - panX) / scale,
-      y: (e.clientY - rect.top - panY) / scale
-    };
-  }
-
-  function handlePointerDown(e) {
-    if (e.pointerType === 'touch' && e.isPrimary === false) return;
-    isDrawing = true;
-    const pos = getCanvasPos(e);
-    startX = pos.x; startY = pos.y;
-
-    if (currentTool === 'pen') {
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.strokeStyle = '#111111';
-      ctx.lineWidth = brushSize;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.globalCompositeOperation = 'source-over';
-    } else if (currentTool === 'eraser') {
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = brushSize * 3;
-      ctx.lineCap = 'round';
-      ctx.globalCompositeOperation = 'source-over';
-    } else if (currentTool === 'select') {
-      isSelecting = true;
-    }
-  }
-
-  function handlePointerMove(e) {
-    if (!isDrawing) return;
-    const pos = getCanvasPos(e);
-    if (currentTool === 'pen' || currentTool === 'eraser') {
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-    }
-  }
-
-  function handlePointerUp(e) {
-    if (!isDrawing) return;
-    isDrawing = false;
-    if (currentTool === 'pen' || currentTool === 'eraser') {
-      saveState();
-    }
-    if (currentTool === 'select' && isSelecting) {
-      isSelecting = false;
-      alert("Selection mode: Dragged selection cleared area.");
-    }
-  }
-
-  function handleTouchStart(e) {
-    if (e.touches.length === 2) {
-      initialPinchDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-    }
-  }
-
-  function handleTouchMove(e) {
-    if (e.touches.length === 2 && initialPinchDist) {
-      e.preventDefault();
-      let currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      let factor = currentDist / initialPinchDist;
-      scale = Math.min(Math.max(0.5, scale * factor), 4);
-      initialPinchDist = currentDist;
-      updateCanvasTransform();
-    }
-  }
-
-  function updateCanvasTransform() {
-    canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-  }
-
-  function buildSettings() {
-    let html = `<header><div></div><h1>Settings</h1><div></div></header>`;
     html += `
-      <div class="card">
-        <h3>Backup Data</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 12px;">Export your topics and quizzes to a file so you never lose them. You can import them back later.</p>
-        <div style="display:flex; gap:10px;">
-          <button class="btn btn-success" style="margin-top:0;" onclick="exportData()">Export</button>
-          <button class="btn btn-primary" style="margin-top:0;" onclick="document.getElementById('import-file').click()">Import</button>
-        </div>
-        <input type="file" id="import-file" accept=".json" onchange="importData(event)">
-      </div>
-      <div class="card">
-        <h3>Danger Zone</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem;">This will permanently wipe all local data.</p>
-        <button class="btn btn-danger" onclick="clearAllData()">Reset All Data</button>
+      <div class="sub-nav">
+        <button class="sub-nav-btn ${fcMode === 'study' ? 'active' : ''}" onclick="setFcMode('study')">📖 Study</button>
+        <button class="sub-nav-btn ${fcMode === 'manage' ? 'active' : ''}" onclick="setFcMode('manage')">⚙️ Add / Manage</button>
       </div>
     `;
+
+    if (fcMode === 'manage') {
+      return html + buildManageFlashcards();
+    }
+
+    const allFlashcards = [];
+    db.topics.forEach(topic => {
+      if(topic.flashcards && topic.flashcards.length > 0) {
+        topic.flashcards.forEach(card => {
+          allFlashcards.push({ ...card, topicId: topic.id, topicName: topic.name });
+        });
+      }
+    });
+
+    if(allFlashcards.length === 0) {
+      html += `
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-state-icon">🎴</div>
+            <p><strong>No flashcards yet</strong></p>
+            <p style="font-size: 0.9rem; margin-top: 8px;">Switch to the 'Add / Manage' tab to create your first flashcard!</p>
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    if(flashcardIndex >= allFlashcards.length) flashcardIndex = 0;
+
+    const currentCard = allFlashcards[flashcardIndex];
+    const progress = ((flashcardIndex + 1) / allFlashcards.length) * 100;
+
+    html += `
+      <div style="margin: 16px; text-align: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+          Card ${flashcardIndex + 1} of ${allFlashcards.length}
+        </span>
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+          Topic: ${currentCard.topicName}
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${progress}%;"></div>
+      </div>
+      <div class="flashcard-container">
+        <div class="flashcard ${isFlipped ? 'flipped' : ''}" id="flashcard" onclick="flipCard()">
+          <div class="flashcard-face flashcard-front">
+            <div class="flashcard-label">Question</div>
+            <div class="flashcard-content">${currentCard.front}</div>
+            <div class="flashcard-hint">Tap to reveal answer</div>
+          </div>
+          <div class="flashcard-face flashcard-back">
+            <div class="flashcard-label">Answer</div>
+            <div class="flashcard-content">${currentCard.back}</div>
+            <div class="flashcard-hint">Tap to flip back</div>
+          </div>
+        </div>
+      </div>
+      <div class="flashcard-controls">
+        <button class="btn" onclick="prevCard()" ${flashcardIndex === 0 ? 'disabled style="opacity:0.4;"' : ''}>← Previous</button>
+        <button class="btn btn-primary" onclick="nextCard()" ${flashcardIndex >= allFlashcards.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>Next →</button>
+      </div>
+    `;
+
     return html;
   }
 
-  window.exportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "study_app_backup.json");
-    dlAnchorElem.click();
-  }
+  function buildManageFlashcards() {
+    let html = '';
+    
+    let topicOptions = db.topics.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    
+    if (db.topics.length === 0) {
+      return `
+        <div class="card">
+          <div class="empty-state">
+            <p><strong>You need a Topic first!</strong></p>
+            <p style="font-size: 0.9rem; margin-top: 8px;">Please go to the Topics tab and create a topic before adding flashcards.</p>
+          </div>
+        </div>
+      `;
+    }
 
-  window.importData = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const importedData = JSON.parse(e.target.result);
-        if (importedData && importedData.topics) {
-          db = importedData;
-          saveData();
-          alert('Data successfully imported!');
-          render();
-        } else {
-          alert('Invalid backup file format.');
+    html += `
+      <div class="card highlight-card">
+        <h3>✨ Create Flashcard</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Add a new flashcard to a specific topic.</p>
+        
+        <label class="form-label">Select Topic</label>
+        <select id="fc-topic-select" style="font-size: 0.95rem;">
+          ${topicOptions}
+        </select>
+
+        <label class="form-label">Front (Question)</label>
+        <textarea rows="2" placeholder="e.g., What is the capital of France?" oninput="newFlashcardFront=this.value" style="font-size: 0.95rem;">${newFlashcardFront}</textarea>
+        
+        <label class="form-label">Back (Answer/Explanation)</label>
+        <textarea rows="3" placeholder="e.g., Paris is the capital and most populous city..." oninput="newFlashcardBack=this.value" style="font-size: 0.95rem;">${newFlashcardBack}</textarea>
+        
+        <button class="btn btn-primary" onclick="addFlashcard()">Add Flashcard</button>
+      </div>
+    `;
+
+    let totalCards = 0;
+    db.topics.forEach(t => totalCards += (t.flashcards ? t.flashcards.length : 0));
+
+    html += `<div class="card">
+      <h3>📚 All Flashcards (${totalCards})</h3>`;
+    
+    if (totalCards > 0) {
+      db.topics.forEach(topic => {
+        if (topic.flashcards && topic.flashcards.length > 0) {
+          html += `<div style="margin-top: 16px; margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: var(--accent-secondary); text-transform: uppercase;">${topic.name}</div>`;
+          topic.flashcards.forEach((card, idx) => {
+            html += `
+              <div class="flashcard-item">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">CARD ${idx + 1}</div>
+                  <button class="btn btn-danger" style="width:auto; padding:6px 12px; margin:0; font-size:0.85rem;" onclick="deleteFlashcard('${topic.id}', '${card.id}')">Delete</button>
+                </div>
+                <div class="flashcard-item-front">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Q:</span> ${card.front}
+                </div>
+                <div class="flashcard-item-back">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">A:</span> ${card.back}
+                </div>
+              </div>
+            `;
+          });
         }
-      } catch (err) {
-        alert('Error reading the file.');
-      }
-    };
-    reader.readAsText(file);
+      });
+    } else {
+      html += `
+        <div class="empty-state" style="padding: 20px;">
+          <p>No flashcards created yet.</p>
+        </div>
+      `;
+    }
+    html += `</div>`;
+    
+    return html;
   }
 
-  window.clearAllData = () => {
-    if (confirm("Are you sure? This will delete all topics and quizzes. Did you export a backup?")) {
-      localStorage.removeItem('study_app_data_v4');
-      db = { topics: [] };
+  function flipCard() {
+    isFlipped = !isFlipped;
+    render();
+  }
+
+  function nextCard() {
+    const allFlashcards = [];
+    db.topics.forEach(topic => {
+      if(topic.flashcards) allFlashcards.push(...topic.flashcards);
+    });
+    
+    if(flashcardIndex < allFlashcards.length - 1) {
+      flashcardIndex++;
+      isFlipped = false;
       render();
     }
   }
 
+  function prevCard() {
+    if(flashcardIndex > 0) {
+      flashcardIndex--;
+      isFlipped = false;
+      render();
+    }
+  }
+
+  // Initialize
   render();
 </script>
 </body>
