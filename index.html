@@ -9,8 +9,8 @@
 <style>
   :root {
     --bg-primary: #0a0e17;
-    --bg-secondary: #111827; /* Charcoal */
-    --bg-card: #1e293b; /* Deep Slate */
+    --bg-secondary: #111827;
+    --bg-card: #1e293b;
     --text-primary: #e8edf4;
     --text-secondary: #9ba3b4;
     --text-muted: #6b7280;
@@ -58,7 +58,6 @@
     border-color: var(--border-accent);
   }
 
-  /* Sub-Navigation Tabs for Creating/Managing */
   .sub-nav {
     display: flex;
     background: var(--bg-secondary);
@@ -163,14 +162,6 @@
     transition: all 0.2s ease;
   }
 
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239ba3b4%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px top 50%;
-    background-size: 12px auto;
-  }
-
   input:focus, textarea:focus, select:focus {
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px var(--accent-glow);
@@ -243,7 +234,6 @@
     cursor: pointer;
     padding: 8px 0;
   }
-
   .quiz-option {
     background: var(--bg-secondary);
     border: 2px solid var(--border);
@@ -326,7 +316,6 @@
 
   .dropdown-item:hover { background: var(--bg-secondary); }
 
-  /* Improved Flashcard Styles */
   .flashcard-container {
     perspective: 1200px;
     margin: 20px 16px;
@@ -336,7 +325,6 @@
     position: relative;
     width: 100%;
     min-height: 320px;
-    /* Smooth, bouncy flip animation */
     transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     transform-style: preserve-3d;
     cursor: pointer;
@@ -363,13 +351,11 @@
     box-shadow: 0 12px 32px var(--shadow);
   }
 
-  /* Distinct Front Design (Deep Slate) */
   .flashcard-front {
     background: var(--bg-card);
     border: 2px solid var(--accent-primary);
   }
 
-  /* Distinct Back Design (Charcoal) */
   .flashcard-back {
     background: var(--bg-secondary);
     border: 2px solid var(--success);
@@ -498,7 +484,6 @@
     <span class="nav-icon">🎴</span><span>Cards</span>
   </button>
 </div>
-
 <script>
   let currentTab = 'subjects';
   let viewStack = ['topicList'];
@@ -514,19 +499,37 @@
   let flashcardIndex = 0;
   let isFlipped = false;
   
-  // UI Sub-tab states
-  let fcMode = 'study'; // 'study' or 'manage'
-  let quizMode = 'play'; // 'play' or 'manage'
+  let fcMode = 'study';
+  let quizMode = 'play';
 
-  // Flashcard creation state
   let newFlashcardFront = '';
   let newFlashcardBack = '';
-  let newFlashcardTopicId = '';
+  let newFlashcardTopic = '';
 
-  let db = JSON.parse(localStorage.getItem('study_app_data_v5')) || { topics: [] };
+  let db = JSON.parse(localStorage.getItem('study_app_data_v6'));
+  if (!db) {
+    let oldDb = JSON.parse(localStorage.getItem('study_app_data_v5'));
+    db = { topics: [], flashcards: [] };
+    if (oldDb && oldDb.topics) {
+      db.topics = oldDb.topics;
+      oldDb.topics.forEach(t => {
+        if (t.flashcards) {
+          t.flashcards.forEach(fc => {
+            db.flashcards.push({
+              id: fc.id,
+              topicName: t.name,
+              front: fc.front,
+              back: fc.back
+            });
+          });
+          delete t.flashcards;
+        }
+      });
+    }
+  }
 
   function saveData() {
-    localStorage.setItem('study_app_data_v5', JSON.stringify(db));
+    localStorage.setItem('study_app_data_v6', JSON.stringify(db));
   }
 
   function setTab(tab) {
@@ -565,13 +568,12 @@
   }
 
   function addTopic() {
-    const name = prompt('Enter new topic name:');
+    const name = prompt('Enter new topic name for quizzes:');
     if (name && name.trim() !== '') {
       const newTopic = { 
         id: Date.now().toString(), 
         name: name.trim(), 
-        quiz: [],
-        flashcards: []
+        quiz: []
       };
       db.topics.push(newTopic);
       activeTopicId = newTopic.id;
@@ -598,7 +600,7 @@
   function deleteTopic(topicId, event) {
     event.stopPropagation();
     openMenuTopicId = null;
-    if (confirm('Delete this topic and all its content?')) {
+    if (confirm('Delete this quiz topic and all its questions?')) {
       db.topics = db.topics.filter(t => t.id !== topicId);
       saveData();
       render();
@@ -679,25 +681,18 @@
     viewStack.push('takeQuiz');
     render();
   }
+
   function addFlashcard() {
-    const topicSelect = document.getElementById('fc-topic-select');
-    const targetTopicId = topicSelect ? topicSelect.value : activeTopicId;
-
-    if (!targetTopicId) {
-      alert('Please select a topic to add this flashcard to!');
+    if (!newFlashcardTopic.trim() || !newFlashcardFront.trim() || !newFlashcardBack.trim()) {
+      alert('Please fill in the topic name, question, and answer fields!');
       return;
     }
 
-    if (!newFlashcardFront.trim() || !newFlashcardBack.trim()) {
-      alert('Please fill in both question and answer fields!');
-      return;
-    }
-
-    const topic = db.topics.find(t => t.id === targetTopicId);
-    if (!topic.flashcards) topic.flashcards = [];
+    if (!db.flashcards) db.flashcards = [];
     
-    topic.flashcards.push({
+    db.flashcards.push({
       id: Date.now().toString(),
+      topicName: newFlashcardTopic.trim(),
       front: newFlashcardFront.trim(),
       back: newFlashcardBack.trim()
     });
@@ -709,10 +704,9 @@
     render();
   }
 
-  function deleteFlashcard(topicId, cardId) {
-    const topic = db.topics.find(t => t.id === topicId);
+  function deleteFlashcard(cardId) {
     if(confirm('Delete this flashcard?')) {
-      topic.flashcards = topic.flashcards.filter(c => c.id !== cardId);
+      db.flashcards = db.flashcards.filter(c => c.id !== cardId);
       saveData();
       render();
     }
@@ -731,7 +725,6 @@
       if (currentView === 'takeQuiz') app.innerHTML += buildQuizSession();
     }
   }
-
   function buildTopicList() {
     let html = `<header><h1>📚 Study Hub</h1></header><div style="padding: 8px 0;">`;
     
@@ -748,7 +741,6 @@
     } else {
       db.topics.forEach(top => {
         const isMenuOpen = openMenuTopicId === top.id;
-        const flashcardCount = top.flashcards ? top.flashcards.length : 0;
         html += `
           <div class="card" onclick="handleTopicClick('${top.id}')" style="cursor:pointer;">
             <div class="title-row">
@@ -762,15 +754,14 @@
               </div>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 12px;">
-              <span class="badge">${top.quiz.length} Quiz${top.quiz.length !== 1 ? 'zes' : ''}</span>
-              <span class="badge">${flashcardCount} Card${flashcardCount !== 1 ? 's' : ''}</span>
+              <span class="badge">${top.quiz.length} Quiz Question${top.quiz.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
         `;
       });
     }
     
-    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">✨ Create New Topic</button></div></div>`;
+    html += `<div style="padding: 0 16px; margin-top: 16px;"><button class="btn btn-primary" onclick="addTopic()">✨ Create Quiz Topic</button></div></div>`;
     return html;
   }
 
@@ -786,7 +777,6 @@
       </div>
     `;
     
-    // Sub-nav for Quiz Tab
     html += `
       <div class="sub-nav">
         <button class="sub-nav-btn ${quizMode === 'play' ? 'active' : ''}" onclick="setQuizMode('play')">🎯 Take Quiz</button>
@@ -811,7 +801,6 @@
       }
       html += `</div>`;
     } else {
-      // Quiz Import Card
       html += `
         <div class="card">
           <h3>📝 Import Quiz Questions</h3>
@@ -821,7 +810,6 @@
         </div>
       `;
       
-      // Quiz Questions List
       html += `<div class="card"><h3>📋 Quiz Questions (${topic.quiz.length})</h3>`;
       if (topic.quiz.length > 0) {
         topic.quiz.forEach((q, idx) => {
@@ -946,14 +934,7 @@
       return html + buildManageFlashcards();
     }
 
-    const allFlashcards = [];
-    db.topics.forEach(topic => {
-      if(topic.flashcards && topic.flashcards.length > 0) {
-        topic.flashcards.forEach(card => {
-          allFlashcards.push({ ...card, topicId: topic.id, topicName: topic.name });
-        });
-      }
-    });
+    const allFlashcards = db.flashcards || [];
 
     if(allFlashcards.length === 0) {
       html += `
@@ -1009,30 +990,13 @@
   }
 
   function buildManageFlashcards() {
-    let html = '';
-    
-    let topicOptions = db.topics.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    
-    if (db.topics.length === 0) {
-      return `
-        <div class="card">
-          <div class="empty-state">
-            <p><strong>You need a Topic first!</strong></p>
-            <p style="font-size: 0.9rem; margin-top: 8px;">Please go to the Topics tab and create a topic before adding flashcards.</p>
-          </div>
-        </div>
-      `;
-    }
-
-    html += `
+    let html = `
       <div class="card highlight-card">
         <h3>✨ Create Flashcard</h3>
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Add a new flashcard to a specific topic.</p>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Add a new flashcard and specify its topic name.</p>
         
-        <label class="form-label">Select Topic</label>
-        <select id="fc-topic-select" style="font-size: 0.95rem;">
-          ${topicOptions}
-        </select>
+        <label class="form-label">Topic Name</label>
+        <input type="text" placeholder="e.g., Math, Science, History" oninput="newFlashcardTopic=this.value" value="${newFlashcardTopic}" style="font-size: 0.95rem;">
 
         <label class="form-label">Front (Question)</label>
         <textarea rows="2" placeholder="e.g., What is the capital of France?" oninput="newFlashcardFront=this.value" style="font-size: 0.95rem;">${newFlashcardFront}</textarea>
@@ -1044,34 +1008,38 @@
       </div>
     `;
 
-    let totalCards = 0;
-    db.topics.forEach(t => totalCards += (t.flashcards ? t.flashcards.length : 0));
+    const allFlashcards = db.flashcards || [];
+    let totalCards = allFlashcards.length;
 
     html += `<div class="card">
       <h3>📚 All Flashcards (${totalCards})</h3>`;
     
     if (totalCards > 0) {
-      db.topics.forEach(topic => {
-        if (topic.flashcards && topic.flashcards.length > 0) {
-          html += `<div style="margin-top: 16px; margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: var(--accent-secondary); text-transform: uppercase;">${topic.name}</div>`;
-          topic.flashcards.forEach((card, idx) => {
-            html += `
-              <div class="flashcard-item">
-                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">CARD ${idx + 1}</div>
-                  <button class="btn btn-danger" style="width:auto; padding:6px 12px; margin:0; font-size:0.85rem;" onclick="deleteFlashcard('${topic.id}', '${card.id}')">Delete</button>
-                </div>
-                <div class="flashcard-item-front">
-                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Q:</span> ${card.front}
-                </div>
-                <div class="flashcard-item-back">
-                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">A:</span> ${card.back}
-                </div>
-              </div>
-            `;
-          });
-        }
+      const groupedCards = {};
+      allFlashcards.forEach(card => {
+        if (!groupedCards[card.topicName]) groupedCards[card.topicName] = [];
+        groupedCards[card.topicName].push(card);
       });
+
+      for (const [topicName, cards] of Object.entries(groupedCards)) {
+        html += `<div style="margin-top: 16px; margin-bottom: 8px; font-size: 0.85rem; font-weight: bold; color: var(--accent-secondary); text-transform: uppercase;">${topicName}</div>`;
+        cards.forEach((card, idx) => {
+          html += `
+            <div class="flashcard-item">
+              <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">CARD ${idx + 1}</div>
+                <button class="btn btn-danger" style="width:auto; padding:6px 12px; margin:0; font-size:0.85rem;" onclick="deleteFlashcard('${card.id}')">Delete</button>
+              </div>
+              <div class="flashcard-item-front">
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Q:</span> ${card.front}
+              </div>
+              <div class="flashcard-item-back">
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">A:</span> ${card.back}
+              </div>
+            </div>
+          `;
+        });
+      }
     } else {
       html += `
         <div class="empty-state" style="padding: 20px;">
@@ -1090,11 +1058,7 @@
   }
 
   function nextCard() {
-    const allFlashcards = [];
-    db.topics.forEach(topic => {
-      if(topic.flashcards) allFlashcards.push(...topic.flashcards);
-    });
-    
+    const allFlashcards = db.flashcards || [];
     if(flashcardIndex < allFlashcards.length - 1) {
       flashcardIndex++;
       isFlipped = false;
@@ -1110,7 +1074,6 @@
     }
   }
 
-  // Initialize
   render();
 </script>
 </body>
