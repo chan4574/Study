@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Study Hub</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study Hub">
 <meta name="theme-color" content="#0a0e17">
 <style>
   :root {
@@ -470,6 +475,98 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 12, 0.72);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+    animation: overlayIn 0.2s ease;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal-box {
+    width: 100%;
+    max-width: 440px;
+    background: linear-gradient(160deg, var(--bg-card), var(--bg-secondary));
+    border: 1px solid var(--border-accent);
+    border-top: 3px solid var(--accent-primary);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 32px var(--shadow), 0 0 24px var(--accent-glow);
+    animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (min-width: 480px) {
+    .modal-overlay { align-items: center; }
+    .modal-box { border-radius: 20px; animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+  }
+
+  @keyframes sheetUp {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes modalPop {
+    from { transform: scale(0.94); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 14px;
+  }
+
+  .modal-box h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .modal-box p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .modal-box input {
+    margin-bottom: 6px;
+  }
+
+  .modal-error {
+    font-size: 0.8rem;
+    color: var(--danger);
+    min-height: 18px;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .modal-actions .btn { margin: 0; }
 </style>
 </head>
 <body>
@@ -483,6 +580,22 @@
   <button class="nav-btn" id="nav-flash" onclick="setTab('flashcards')">
     <span class="nav-icon">🎴</span><span>Cards</span>
   </button>
+</div>
+
+<div class="modal-overlay" id="topicModalOverlay" onclick="if(event.target===this) closeTopicModal()">
+  <div class="modal-box">
+    <div class="modal-icon">✨</div>
+    <h3>New Quiz Topic</h3>
+    <p>Give your topic a name — you'll add questions to it next.</p>
+    <input type="text" id="topicNameInput" placeholder="e.g., Biology, World History" maxlength="60"
+      oninput="document.getElementById('topicModalError').textContent=''"
+      onkeydown="if(event.key==='Enter') confirmAddTopic(); if(event.key==='Escape') closeTopicModal();">
+    <div class="modal-error" id="topicModalError"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeTopicModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddTopic()">Create Topic</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -566,12 +679,28 @@
   }
 
   function addTopic() {
-    const name = prompt('Enter new topic name for quizzes:');
-    if (name && name.trim() !== '') {
-      db.topics.push({ id: Date.now().toString(), name: name.trim(), quiz: [] });
-      saveData();
-      render();
+    document.getElementById('topicNameInput').value = '';
+    document.getElementById('topicModalError').textContent = '';
+    document.getElementById('topicModalOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('topicNameInput').focus(), 50);
+  }
+
+  function closeTopicModal() {
+    document.getElementById('topicModalOverlay').classList.remove('show');
+  }
+
+  function confirmAddTopic() {
+    const input = document.getElementById('topicNameInput');
+    const name = input.value.trim();
+    if (!name) {
+      document.getElementById('topicModalError').textContent = 'Please enter a topic name.';
+      input.focus();
+      return;
     }
+    db.topics.push({ id: Date.now().toString(), name: name, quiz: [] });
+    saveData();
+    closeTopicModal();
+    render();
   }
 
   function toggleMenu(topicId, event) {
@@ -922,6 +1051,12 @@
   }
 
   render();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>
