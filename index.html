@@ -620,6 +620,21 @@
   let newFlashcardFront = '';
   let newFlashcardBack = '';
   let newFlashcardTopic = '';
+  let fcTopicChoice = '';
+  let bulkCardText = '';
+
+  function escAttr(t) {
+    return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function getFcTopic() {
+    return (fcTopicChoice === '__new__' ? newFlashcardTopic : fcTopicChoice).trim();
+  }
+  function getKnownTopics() {
+    const names = [];
+    (db.flashcards || []).forEach(c => { if (c.topicName && !names.includes(c.topicName)) names.push(c.topicName); });
+    (db.topics || []).forEach(t => { if (t.name && !names.includes(t.name)) names.push(t.name); });
+    return names;
+  }
 
   let db = JSON.parse(localStorage.getItem('study_app_data_v6'));
   if (!db) {
@@ -954,16 +969,30 @@
   }
 
   function buildManageFlashcards() {
+    const known = getKnownTopics();
+    if (fcTopicChoice === '' && known.length === 0) fcTopicChoice = '__new__';
+    const topicOptions = `<option value="" ${fcTopicChoice === '' ? 'selected' : ''} disabled>Choose a topic…</option>` +
+      known.map(n => `<option value="${escAttr(n)}" ${fcTopicChoice === n ? 'selected' : ''}>${escAttr(n)}</option>`).join('') +
+      `<option value="__new__" ${fcTopicChoice === '__new__' ? 'selected' : ''}>＋ New topic…</option>`;
     let html = `
       <div class="card highlight-card">
-        <h3>✨ Create Flashcard</h3>
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Add a new flashcard and specify its topic name.</p>
-        <label class="form-label">Topic Name</label>
-        <input type="text" placeholder="e.g., Math, Science" oninput="newFlashcardTopic=this.value" value="${newFlashcardTopic}" style="font-size: 0.95rem;">
+        <h3>📂 Topic</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">Cards you add below go into this topic.</p>
+        <select onchange="fcTopicChoice=this.value; render();" style="font-size: 0.95rem;">${topicOptions}</select>
+        ${fcTopicChoice === '__new__' ? `<input type="text" placeholder="New topic name, e.g., School as a Community" oninput="newFlashcardTopic=this.value" value="${escAttr(newFlashcardTopic)}" style="font-size: 0.95rem;">` : ''}
+      </div>
+      <div class="card highlight-card">
+        <h3>📥 Bulk Import Flashcards</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin: 12px 0;">One card per line: <strong>Question | Answer</strong>. Numbering is optional. Q:/A: line pairs also work.</p>
+        <textarea rows="7" placeholder="What is the mean? | The sum of values divided by n&#10;Define the Closed Door Pattern | The school operates in isolation from its community" oninput="bulkCardText=this.value" style="font-size: 0.9rem;">${escAttr(bulkCardText)}</textarea>
+        <button class="btn btn-success" onclick="importFlashcards()">Import Flashcards</button>
+      </div>
+      <div class="card highlight-card">
+        <h3>✨ Create Single Flashcard</h3>
         <label class="form-label">Front (Question)</label>
-        <textarea rows="2" placeholder="e.g., What is the capital of France?" oninput="newFlashcardFront=this.value" style="font-size: 0.95rem;">${newFlashcardFront}</textarea>
+        <textarea rows="2" placeholder="e.g., What is the capital of France?" oninput="newFlashcardFront=this.value" style="font-size: 0.95rem;">${escAttr(newFlashcardFront)}</textarea>
         <label class="form-label">Back (Answer/Explanation)</label>
-        <textarea rows="3" placeholder="e.g., Paris is the capital..." oninput="newFlashcardBack=this.value" style="font-size: 0.95rem;">${newFlashcardBack}</textarea>
+        <textarea rows="3" placeholder="e.g., Paris is the capital..." oninput="newFlashcardBack=this.value" style="font-size: 0.95rem;">${escAttr(newFlashcardBack)}</textarea>
         <button class="btn btn-primary" onclick="addFlashcard()">Add Flashcard</button>
       </div>
     `;
@@ -993,13 +1022,46 @@
     return html;
   }
 
+  function importFlashcards() {
+    const topicName = getFcTopic();
+    if (!topicName) { alert('Choose a topic first (or enter a new topic name).'); return; }
+    const lines = bulkCardText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
+    const cards = [];
+    let pendingQ = null;
+    const clean = t => t.replace(/^\s*\d{1,3}[\.\)]\s+/, '').trim();
+    for (const line of lines) {
+      const qm = line.match(/^(?:\d{1,3}[\.\)]\s*)?Q\s*[:\-]\s*(.+)/i);
+      const am = line.match(/^A\s*[:\-]\s*(.+)/i);
+      if (qm && !line.includes('|')) { pendingQ = qm[1].trim(); continue; }
+      if (am && pendingQ !== null && !line.includes('|')) { cards.push({ front: pendingQ, back: am[1].trim() }); pendingQ = null; continue; }
+      let sep = line.indexOf('|');
+      if (sep === -1) sep = line.indexOf('\t');
+      if (sep > 0) {
+        const front = clean(line.slice(0, sep));
+        const back = line.slice(sep + 1).trim();
+        if (front && back) cards.push({ front, back });
+      }
+    }
+    if (cards.length === 0) { alert('Could not find any cards. Use one per line: Question | Answer'); return; }
+    if (!db.flashcards) db.flashcards = [];
+    const base = Date.now();
+    cards.forEach((c, i) => db.flashcards.push({ id: (base + i).toString(), topicName, front: c.front, back: c.back }));
+    if (fcTopicChoice === '__new__') { fcTopicChoice = topicName; newFlashcardTopic = ''; }
+    bulkCardText = '';
+    saveData();
+    alert(`✅ Imported ${cards.length} flashcard${cards.length !== 1 ? 's' : ''} into "${topicName}"!`);
+    render();
+  }
+
   function addFlashcard() {
-    if (!newFlashcardTopic.trim() || !newFlashcardFront.trim() || !newFlashcardBack.trim()) {
-      alert('Please fill in the topic name, question, and answer fields!');
+    const topicName = getFcTopic();
+    if (!topicName || !newFlashcardFront.trim() || !newFlashcardBack.trim()) {
+      alert('Please choose a topic and fill in the question and answer fields!');
       return;
     }
     if (!db.flashcards) db.flashcards = [];
-    db.flashcards.push({ id: Date.now().toString(), topicName: newFlashcardTopic.trim(), front: newFlashcardFront.trim(), back: newFlashcardBack.trim() });
+    db.flashcards.push({ id: Date.now().toString(), topicName, front: newFlashcardFront.trim(), back: newFlashcardBack.trim() });
+    if (fcTopicChoice === '__new__') { fcTopicChoice = topicName; newFlashcardTopic = ''; }
     newFlashcardFront = '';
     newFlashcardBack = '';
     saveData();
